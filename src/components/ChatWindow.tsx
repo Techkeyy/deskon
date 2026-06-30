@@ -11,7 +11,25 @@ interface Message {
   };
 }
 
-export default function ChatWindow({ slug, sellerName }: { slug: string; sellerName: string }) {
+function renderContent(content: string) {
+  return content.split(/(\*\*.*?\*\*)/).map((part, j) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={j} style={{ color: "var(--text-1)", fontWeight: 600 }}>
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={j}>{part}</span>
+    )
+  );
+}
+
+export default function ChatWindow({
+  slug,
+  sellerName,
+}: {
+  slug: string;
+  sellerName: string;
+}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,14 +40,13 @@ export default function ChatWindow({ slug, sellerName }: { slug: string; sellerN
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
-  // Send opening message on first load
   useEffect(() => {
     setMessages([
       {
         role: "assistant",
-        content: `Hey! 👋 I'm the AI assistant for **${sellerName}**. I handle inquiries, scope projects, and close deals — so ${sellerName} can focus on the work.\n\nWhat are you looking for?`,
+        content: `I'm the closer for **${sellerName}**. I handle the inquiry, scope the work, and settle payment — so ${sellerName} can stay on the work.\n\nWhat are you after?`,
       },
     ]);
   }, [sellerName]);
@@ -49,34 +66,37 @@ export default function ChatWindow({ slug, sellerName }: { slug: string; sellerN
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, conversationId, message: userMessage }),
       });
-
       const data = await res.json();
 
       if (!res.ok) {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "Sorry, something went wrong. Please try again." },
+          { role: "assistant", content: "Something went wrong. Try again." },
         ]);
         return;
       }
 
       setConversationId(data.conversationId);
       setStatus(data.status);
-
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content: data.message,
           metadata: data.functionCall
-            ? { type: data.functionCall.name, amount: data.functionCall.args?.amount || data.functionCall.args?.price }
+            ? {
+                type: data.functionCall.name,
+                amount:
+                  data.functionCall.args?.amount ||
+                  data.functionCall.args?.price,
+              }
             : undefined,
         },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Connection error. Please try again." },
+        { role: "assistant", content: "Connection error. Try again." },
       ]);
     } finally {
       setLoading(false);
@@ -86,7 +106,6 @@ export default function ChatWindow({ slug, sellerName }: { slug: string; sellerN
   async function handlePay(amount: number) {
     if (!conversationId || paying) return;
     setPaying(true);
-    setMessages((prev) => [...prev, { role: "assistant", content: `Processing payment of $${amount} USDC on Base...` }]);
 
     try {
       const res = await fetch("/api/payment/initiate", {
@@ -102,83 +121,209 @@ export default function ChatWindow({ slug, sellerName }: { slug: string; sellerN
           ...prev,
           {
             role: "assistant",
-            content: `✅ Payment confirmed! Your order is locked in escrow on Base. ${sellerName} will reach out to start the work.`,
+            content: `Payment cleared. Your order is locked in escrow on Base — ${sellerName} will reach out to start the work.`,
           },
         ]);
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `⚠️ ${data.error || "Payment could not be completed."}` },
+          {
+            role: "assistant",
+            content: data.error || "Payment could not be completed.",
+          },
         ]);
       }
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Payment connection error." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Payment connection error." },
+      ]);
     } finally {
       setPaying(false);
     }
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-neutral-950">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        maxWidth: 640,
+        margin: "0 auto",
+        borderLeft: "1px solid var(--border)",
+        borderRight: "1px solid var(--border)",
+      }}
+    >
       {/* Header */}
-      <div className="border-b border-neutral-800 px-6 py-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-sm font-bold text-black">
-          {sellerName.charAt(0)}
-        </div>
-        <div>
-          <h1 className="text-white font-semibold text-sm">{sellerName}</h1>
-          <p className="text-neutral-500 text-xs">Powered by Deskon</p>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "16px 22px",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <span
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 8,
+            background: "var(--accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: 16,
+          }}
+        >
+          {sellerName.charAt(0).toUpperCase()}
+        </span>
+        <div style={{ lineHeight: 1.3 }}>
+          <div
+            className="display"
+            style={{ fontSize: 15, fontWeight: 700 }}
+          >
+            {sellerName}
+          </div>
+          <div className="eyebrow" style={{ fontSize: 9 }}>
+            Closing via Deskon
+          </div>
         </div>
         {status === "payment_pending" && (
-          <span className="ml-auto text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-full">
-            Payment pending
+          <span className="badge" style={{ marginLeft: "auto" }}>
+            <span className="badge-dot" />
+            <span
+              className="num"
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--accent-soft)",
+              }}
+            >
+              Deal on the table
+            </span>
           </span>
         )}
-      </div>
+      </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div
+        className="scroll-thin"
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "24px 22px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent:
+                msg.role === "user" ? "flex-end" : "flex-start",
+            }}
+          >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-amber-600 text-white"
-                  : "bg-neutral-900 text-neutral-200 border border-neutral-800"
-              }`}
+              style={{
+                maxWidth: "82%",
+                padding: "12px 16px",
+                borderRadius: 14,
+                fontSize: 14.5,
+                lineHeight: 1.55,
+                whiteSpace: "pre-wrap",
+                ...(msg.role === "user"
+                  ? { background: "var(--accent)", color: "#fff" }
+                  : {
+                      background: "var(--surface)",
+                      color: "var(--text-2)",
+                      border: "1px solid var(--border)",
+                    }),
+              }}
             >
-              <div className="whitespace-pre-wrap">
-                {msg.content.split(/(\*\*.*?\*\*)/).map((part, j) =>
-                  part.startsWith("**") && part.endsWith("**") ? (
-                    <strong key={j} className="font-semibold text-white">
-                      {part.slice(2, -2)}
-                    </strong>
-                  ) : (
-                    <span key={j}>{part}</span>
-                  )
+              <div>{renderContent(msg.content)}</div>
+
+              {msg.metadata?.type === "payment_prompt" &&
+                msg.metadata.amount && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      paddingTop: 14,
+                      borderTop: "1px solid var(--border)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <span className="eyebrow">Agreed</span>
+                      <span
+                        className="num"
+                        style={{
+                          fontSize: 22,
+                          color: "var(--text-1)",
+                          fontWeight: 500,
+                        }}
+                      >
+                        ${msg.metadata.amount}{" "}
+                        <span
+                          style={{ fontSize: 12, color: "var(--text-3)" }}
+                        >
+                          USDC
+                        </span>
+                      </span>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: "100%", justifyContent: "center" }}
+                      onClick={() => handlePay(msg.metadata!.amount!)}
+                      disabled={paying || status === "completed"}
+                    >
+                      {paying
+                        ? "Settling on Base…"
+                        : status === "completed"
+                        ? "Paid ✓"
+                        : `Pay $${msg.metadata.amount} on Base`}
+                    </button>
+                  </div>
                 )}
-              </div>
-              {msg.metadata?.type === "payment_prompt" && msg.metadata.amount && (
-                <button
-                  className="mt-3 w-full bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 disabled:text-neutral-400 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm"
-                  onClick={() => handlePay(msg.metadata!.amount!)}
-                  disabled={paying || status === "completed"}
-                >
-                  {paying ? "Processing..." : status === "completed" ? "Paid ✓" : `Pay $${msg.metadata.amount} USDC`}
-                </button>
-              )}
             </div>
           </div>
         ))}
 
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-neutral-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 bg-neutral-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 bg-neutral-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 14,
+                padding: "14px 16px",
+                display: "flex",
+                gap: 5,
+              }}
+            >
+              <span className="typing-dot" />
+              <span
+                className="typing-dot"
+                style={{ animationDelay: "0.2s" }}
+              />
+              <span
+                className="typing-dot"
+                style={{ animationDelay: "0.4s" }}
+              />
             </div>
           </div>
         )}
@@ -186,24 +331,39 @@ export default function ChatWindow({ slug, sellerName }: { slug: string; sellerN
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="border-t border-neutral-800 px-4 py-3">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-600 transition-colors"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-amber-600 hover:bg-amber-500 disabled:bg-neutral-800 disabled:text-neutral-600 text-white px-5 py-3 rounded-xl font-medium text-sm transition-colors"
-          >
-            Send
-          </button>
-        </div>
+      <form
+        onSubmit={sendMessage}
+        style={{
+          padding: "14px 18px",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          gap: 10,
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message…"
+          disabled={loading}
+          style={{
+            flex: 1,
+            background: "var(--surface)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: 10,
+            padding: "12px 16px",
+            fontSize: 14.5,
+            color: "var(--text-1)",
+            outline: "none",
+          }}
+        />
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={loading || !input.trim()}
+        >
+          Send
+        </button>
       </form>
     </div>
   );

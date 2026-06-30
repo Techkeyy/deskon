@@ -1,18 +1,203 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* surfaces */
+  --bg: #0a0a0c;
+  --bg-2: #0d0d10;
+  --surface: #141418;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  /* text */
+  --text-1: #ececee;
+  --text-2: #a4a4ac;
+  --text-3: #6a6a74;
+
+  /* the one precious accent — Deskon orange */
+  --accent: #ff5a1f;
+  --accent-soft: #ff7a47;
+  --accent-dim: rgba(255, 90, 31, 0.12);
+  --accent-border: rgba(255, 90, 31, 0.32);
+
+  /* a single rarer accent, for proof/verified moments only */
+  --verify: #4ade80;
+  --verify-dim: rgba(74, 222, 128, 0.1);
+  --verify-border: rgba(74, 222, 128, 0.28);
+
+  --font-display: var(--font-display), "Syne", sans-serif;
+  --font-grotesk: var(--font-grotesk), "Space Grotesk", sans-serif;
+  --nav-h: 68px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --font-display: var(--font-display);
+  --font-grotesk: var(--font-grotesk);
+  --font-mono: var(--font-mono);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text-2);
+  font-family: var(--font-grotesk);
+  -webkit-font-smoothing: antialiased;
+}
+
+section[id] {
+  scroll-margin-top: var(--nav-h);
+}
+
+/* ── type roles ─────────────────────────────────────────── */
+
+.display {
+  font-family: var(--font-display);
+  color: var(--text-1);
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  font-weight: 800;
+}
+
+.num {
+  font-family: var(--font-grotesk);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ── buttons (law: shrink + flip toward accent on hover) ── */
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 14px 30px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease,
+    border-color 0.18s ease;
+}
+.btn:active {
+  transform: scale(0.94);
+}
+
+.btn-primary {
+  background: var(--text-1);
+  color: var(--bg);
+}
+.btn-primary:hover {
+  transform: scale(0.97);
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border-color: var(--border-strong);
+}
+.btn-ghost:hover {
+  transform: scale(0.97);
+  color: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── nav ────────────────────────────────────────────────── */
+
+.navlink {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color 0.18s ease;
+}
+.navlink:hover {
+  color: var(--text-1);
+}
+
+.nav-secondary {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+@media (max-width: 640px) {
+  .nav-secondary {
+    display: none;
+  }
+}
+
+/* ── live / proof badge ─────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-dim);
+}
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+/* ── scrollbars in chat ─────────────────────────────────── */
+
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+/* ── typing indicator ───────────────────────────────────── */
+
+@keyframes pulse-dot {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+  animation: pulse-dot 1.2s infinite ease-in-out;
 }

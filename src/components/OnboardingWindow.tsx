@@ -7,12 +7,24 @@ interface Message {
   content: string;
 }
 
+function renderContent(content: string) {
+  return content.split(/(\*\*.*?\*\*)/).map((part, j) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={j} style={{ color: "var(--text-1)", fontWeight: 600 }}>
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={j}>{part}</span>
+    )
+  );
+}
+
 export default function OnboardingWindow() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
       content:
-        "Welcome to Deskon! 👋 I'll set up your AI deal-closer in a couple of minutes — no forms, just a chat.\n\nTo start: **what do you do?**",
+        "Let's build your closer. No forms — just tell me about your work and I'll wire it up.\n\nTo start: **what do you do?**",
     },
   ]);
   const [input, setInput] = useState("");
@@ -23,7 +35,7 @@ export default function OnboardingWindow() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, relayLink]);
+  }, [messages, relayLink, loading]);
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +43,10 @@ export default function OnboardingWindow() {
 
     const userMessage = input.trim();
     setInput("");
-    const updated = [...messages, { role: "user" as const, content: userMessage }];
+    const updated = [
+      ...messages,
+      { role: "user" as const, content: userMessage },
+    ];
     setMessages(updated);
     setLoading(true);
 
@@ -44,18 +59,26 @@ export default function OnboardingWindow() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Try again." }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Something went wrong. Try again." },
+        ]);
         return;
       }
 
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.message },
+      ]);
 
       if (data.finalized && data.slug) {
-        const link = `${window.location.origin}/chat/${data.slug}`;
-        setRelayLink(link);
+        setRelayLink(`${window.location.origin}/chat/${data.slug}`);
       }
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Connection error. Try again." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Connection error. Try again." },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -69,76 +92,182 @@ export default function OnboardingWindow() {
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-neutral-950">
-      <div className="border-b border-neutral-800 px-6 py-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-sm font-bold text-black">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        maxWidth: 640,
+        margin: "0 auto",
+        borderLeft: "1px solid var(--border)",
+        borderRight: "1px solid var(--border)",
+      }}
+    >
+      {/* Header */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "16px 22px",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <span
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 8,
+            background: "var(--accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: 16,
+          }}
+        >
           D
+        </span>
+        <div style={{ lineHeight: 1.3 }}>
+          <div className="display" style={{ fontSize: 15, fontWeight: 700 }}>
+            Set up your Relay
+          </div>
+          <div className="eyebrow" style={{ fontSize: 9 }}>
+            Deskon onboarding
+          </div>
         </div>
-        <div>
-          <h1 className="text-white font-semibold text-sm">Set up your Relay</h1>
-          <p className="text-neutral-500 text-xs">Deskon onboarding</p>
-        </div>
-      </div>
+      </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      {/* Messages */}
+      <div
+        className="scroll-thin"
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "24px 22px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent:
+                msg.role === "user" ? "flex-end" : "flex-start",
+            }}
+          >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-amber-600 text-white"
-                  : "bg-neutral-900 text-neutral-200 border border-neutral-800"
-              }`}
+              style={{
+                maxWidth: "82%",
+                padding: "12px 16px",
+                borderRadius: 14,
+                fontSize: 14.5,
+                lineHeight: 1.55,
+                whiteSpace: "pre-wrap",
+                ...(msg.role === "user"
+                  ? { background: "var(--accent)", color: "#fff" }
+                  : {
+                      background: "var(--surface)",
+                      color: "var(--text-2)",
+                      border: "1px solid var(--border)",
+                    }),
+              }}
             >
-              <div className="whitespace-pre-wrap">
-                {msg.content.split(/(\*\*.*?\*\*)/).map((part, j) =>
-                  part.startsWith("**") && part.endsWith("**") ? (
-                    <strong key={j} className="font-semibold text-white">
-                      {part.slice(2, -2)}
-                    </strong>
-                  ) : (
-                    <span key={j}>{part}</span>
-                  )
-                )}
-              </div>
+              {renderContent(msg.content)}
             </div>
           </div>
         ))}
 
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl px-4 py-3">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-neutral-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 bg-neutral-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 bg-neutral-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 14,
+                padding: "14px 16px",
+                display: "flex",
+                gap: 5,
+              }}
+            >
+              <span className="typing-dot" />
+              <span className="typing-dot" style={{ animationDelay: "0.2s" }} />
+              <span className="typing-dot" style={{ animationDelay: "0.4s" }} />
             </div>
           </div>
         )}
 
         {relayLink && (
-          <div className="bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-600/30 rounded-2xl p-5 space-y-3">
-            <p className="text-amber-400 text-xs font-mono uppercase tracking-wider">Your Relay is live</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white truncate">
+          <div
+            style={{
+              border: "1px solid var(--accent-border)",
+              background: "var(--accent-dim)",
+              borderRadius: 14,
+              padding: "26px 24px",
+            }}
+          >
+            <span className="eyebrow" style={{ color: "var(--accent-soft)" }}>
+              Your Relay is live
+            </span>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 16,
+                alignItems: "center",
+              }}
+            >
+              <code
+                className="mono"
+                style={{
+                  flex: 1,
+                  background: "var(--bg)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: 8,
+                  padding: "11px 14px",
+                  fontSize: 13,
+                  color: "var(--text-1)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {relayLink}
               </code>
               <button
                 onClick={copyLink}
-                className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                className="btn btn-primary"
+                style={{ flexShrink: 0 }}
               >
-                {copied ? "Copied ✓" : "Copy"}
+                {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            <p className="text-neutral-400 text-sm">
-              Share this anywhere — bio, WhatsApp, a tweet. Anyone who clicks it talks to your AI, which closes the deal and collects payment.
+            <p
+              style={{
+                marginTop: 16,
+                fontSize: 14,
+                lineHeight: 1.55,
+                color: "var(--text-2)",
+              }}
+            >
+              Share it anywhere — bio, DM, a post. Anyone who opens it talks to
+              your closer, which scopes the deal and settles payment on-chain.
             </p>
             <a
               href={relayLink}
               target="_blank"
               rel="noreferrer"
-              className="inline-block text-amber-400 hover:text-amber-300 text-sm font-medium"
+              className="navlink"
+              style={{
+                display: "inline-block",
+                marginTop: 14,
+                color: "var(--accent-soft)",
+              }}
             >
               Preview your Relay →
             </a>
@@ -147,25 +276,41 @@ export default function OnboardingWindow() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Input */}
       {!relayLink && (
-        <form onSubmit={sendMessage} className="border-t border-neutral-800 px-4 py-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your answer..."
-              className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-600 transition-colors"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="bg-amber-600 hover:bg-amber-500 disabled:bg-neutral-800 disabled:text-neutral-600 text-white px-5 py-3 rounded-xl font-medium text-sm transition-colors"
-            >
-              Send
-            </button>
-          </div>
+        <form
+          onSubmit={sendMessage}
+          style={{
+            padding: "14px 18px",
+            borderTop: "1px solid var(--border)",
+            display: "flex",
+            gap: 10,
+          }}
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your answer…"
+            disabled={loading}
+            style={{
+              flex: 1,
+              background: "var(--surface)",
+              border: "1px solid var(--border-strong)",
+              borderRadius: 10,
+              padding: "12px 16px",
+              fontSize: 14.5,
+              color: "var(--text-1)",
+              outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading || !input.trim()}
+          >
+            Send
+          </button>
         </form>
       )}
     </div>
