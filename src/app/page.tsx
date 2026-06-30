@@ -25,49 +25,24 @@ export default function Home() {
           backdropFilter: "blur(12px)",
         }}
       >
-        <Link
-          href="/"
-          style={{ display: "flex", alignItems: "center", gap: 10 }}
-        >
-          <span
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 6,
-              background: "var(--accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              fontFamily: "var(--font-display)",
-              fontWeight: 800,
-              fontSize: 15,
-            }}
-          >
-            D
-          </span>
+        <Link href="/">
           <span
             className="display"
-            style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em" }}
+            style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.01em" }}
           >
             Deskon
           </span>
         </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-          <div className="nav-secondary">
-            <a href="#how" className="navlink">
-              How it works
-            </a>
-            <a href="#proof" className="navlink">
-              Proof
-            </a>
-            <Link href="/chat/demo" className="navlink">
-              Demo
-            </Link>
-          </div>
-          <Link href="/setup" className="btn btn-primary">
-            Create your Relay
+        <div className="nav-secondary" style={{ gap: 30 }}>
+          <a href="#how" className="navlink">
+            How it works
+          </a>
+          <a href="#proof" className="navlink">
+            Proof
+          </a>
+          <Link href="/chat/demo" className="navlink">
+            Demo
           </Link>
         </div>
       </nav>
