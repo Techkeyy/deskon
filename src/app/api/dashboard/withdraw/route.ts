@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySellerAuth } from "@/lib/auth";
+import { resolveSellerAuth } from "@/lib/auth";
 import { getSellerLedger, createWithdrawal } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
-    const { wallet, message, signature, amount } = await req.json();
+    const { wallet, message, signature, googleToken, amount } =
+      await req.json();
 
-    const auth = await verifySellerAuth({ wallet, message, signature });
+    const auth = await resolveSellerAuth({
+      wallet,
+      message,
+      signature,
+      googleToken,
+    });
     if (!auth.ok) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
     }

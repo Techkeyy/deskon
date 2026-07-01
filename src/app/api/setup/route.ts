@@ -5,7 +5,7 @@ import { ChatMessage } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, payoutWallet } = await req.json();
+    const { messages, payoutWallet, authEmail } = await req.json();
 
     if (!Array.isArray(messages)) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
         personaPrompt: result.finalized.personaPrompt,
         services: result.finalized.services,
         payoutWallet,
+        authEmail: typeof authEmail === "string" ? authEmail : null,
       });
 
       return NextResponse.json({

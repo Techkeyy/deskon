@@ -29,6 +29,7 @@ function toSeller(r: any): SellerProfile {
     displayName: r.display_name,
     personaPrompt: r.persona_prompt ?? "",
     payoutWallet: r.payout_wallet ?? null,
+    authEmail: r.auth_email ?? null,
     services: (r.services as SellerService[]) ?? [],
     crooServiceId: r.croo_service_id ?? null,
     createdAt: r.created_at,
@@ -97,6 +98,19 @@ export async function getSellerByWallet(
   return data ? toSeller(data) : null;
 }
 
+export async function getSellerByEmail(
+  email: string
+): Promise<SellerProfile | null> {
+  // One Google account may map to more than one Relay — take the most recent.
+  const { data } = await db()
+    .from("sellers")
+    .select("*")
+    .eq("auth_email", email.toLowerCase())
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return data && data[0] ? toSeller(data[0]) : null;
+}
+
 export async function generateSlug(displayName: string): Promise<string> {
   const base =
     displayName
@@ -118,6 +132,7 @@ export async function createSeller(input: {
   displayName: string;
   personaPrompt?: string;
   payoutWallet?: string | null;
+  authEmail?: string | null;
   services?: SellerService[];
   crooServiceId?: string | null;
 }): Promise<SellerProfile> {
@@ -128,6 +143,7 @@ export async function createSeller(input: {
       display_name: input.displayName,
       persona_prompt: input.personaPrompt ?? "",
       payout_wallet: input.payoutWallet?.toLowerCase() ?? null,
+      auth_email: input.authEmail?.toLowerCase() ?? null,
       services: input.services ?? [],
       croo_service_id:
         input.crooServiceId ?? process.env.CROO_DEMO_SERVICE_ID ?? null,
@@ -144,6 +160,7 @@ export async function updateSeller(
     displayName: string;
     personaPrompt: string;
     payoutWallet: string | null;
+    authEmail: string | null;
     services: SellerService[];
     crooServiceId: string | null;
   }>
@@ -154,6 +171,8 @@ export async function updateSeller(
     patch.persona_prompt = updates.personaPrompt;
   if (updates.payoutWallet !== undefined)
     patch.payout_wallet = updates.payoutWallet?.toLowerCase() ?? null;
+  if (updates.authEmail !== undefined)
+    patch.auth_email = updates.authEmail?.toLowerCase() ?? null;
   if (updates.services !== undefined) patch.services = updates.services;
   if (updates.crooServiceId !== undefined)
     patch.croo_service_id = updates.crooServiceId;

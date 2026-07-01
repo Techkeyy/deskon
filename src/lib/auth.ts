@@ -1,12 +1,21 @@
 import { verifyMessage } from "viem";
-import { getSellerByWallet } from "./db";
+import { getSellerByWallet, getSellerByEmail } from "./db";
+import { supabaseAuthServer } from "./supabase-server";
 import { SellerProfile } from "@/types";
 
-const MAX_AGE_MS = 5 * 60 * 1000; // signatures are valid for 5 minutes
+const MAX_AGE_MS = 5 * 60 * 1000; // wallet signatures are valid for 5 minutes
 
-type AuthResult =
+export type AuthResult =
   | { ok: true; seller: SellerProfile }
   | { ok: false; error: string };
+
+/** Credentials accepted by the dashboard — a wallet signature OR a Google session token. */
+export interface AuthInput {
+  wallet?: string;
+  message?: string;
+  signature?: string;
+  googleToken?: string;
+}
 
 /**
  * Verify a seller signed the dashboard-auth message with the wallet they claim,
@@ -49,4 +58,41 @@ export async function verifySellerAuth(input: {
   }
 
   return { ok: true, seller };
+}
+
+/**
+ * Validate a Supabase (Google) access token, then resolve the Relay linked to
+ * that email. Payout still routes to the seller's stored wallet — this is a
+ * read/convenience login only.
+ */
+export async function verifyGoogleAuth(
+  token?: string
+): Promise<AuthResult> {
+  if (!token) return { ok: false, error: "Missing Google session." };
+
+  let email: string | undefined;
+  try {
+    const { data, error } = await supabaseAuthServer().auth.getUser(token);
+    if (error) return { ok: false, error: "Google session invalid or expired." };
+    email = data.user?.email ?? undefined;
+  } catch {
+    return { ok: false, error: "Could not verify Google session." };
+  }
+  if (!email) return { ok: false, error: "Google account has no email." };
+
+  const seller = await getSellerByEmail(email);
+  if (!seller) {
+    return {
+      ok: false,
+      error:
+        "No Relay is linked to this Google account yet. Sign in with your payout wallet, or create a Relay.",
+    };
+  }
+  return { ok: true, seller };
+}
+
+/** Resolve a seller from either credential type — Google token preferred if present. */
+export async function resolveSellerAuth(input: AuthInput): Promise<AuthResult> {
+  if (input.googleToken) return verifyGoogleAuth(input.googleToken);
+  return verifySellerAuth(input);
 }

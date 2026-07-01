@@ -42,7 +42,9 @@ export default function AuthModal({
     try {
       const { error } = await supabaseBrowser().auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.href },
+        options: {
+          redirectTo: window.location.origin + window.location.pathname,
+        },
       });
       if (error) throw error;
       // On success the browser redirects to Google; nothing more to do here.

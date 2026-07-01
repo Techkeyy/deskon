@@ -3,11 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import AuthModal from "@/components/AuthModal";
+import { getGoogleSession } from "@/lib/supabase-browser";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
+
+// The Google OAuth redirect reloads this page, so keep the in-progress
+// conversation (and connected wallet) alive across it.
+const DRAFT_KEY = "deskon:onboarding-draft";
 
 function renderContent(content: string) {
   return content.split(/(\*\*.*?\*\*)/).map((part, j) =>
@@ -34,12 +39,46 @@ export default function OnboardingWindow() {
   const [relayLink, setRelayLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [wallet, setWallet] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [restored, setRestored] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, relayLink, loading]);
+
+  // On mount: restore any draft saved before a Google redirect, then adopt the
+  // Google email if the browser now has a session.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (Array.isArray(draft.messages) && draft.messages.length > 1) {
+          setMessages(draft.messages);
+        }
+        if (draft.wallet) setWallet(draft.wallet);
+      }
+    } catch {
+      /* ignore malformed draft */
+    }
+    (async () => {
+      const g = await getGoogleSession();
+      if (g) setEmail(g.email);
+      setRestored(true);
+    })();
+  }, []);
+
+  // Persist the draft so the Google redirect doesn't wipe the conversation.
+  useEffect(() => {
+    if (!restored || relayLink) return;
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ messages, wallet }));
+    } catch {
+      /* storage full / disabled — non-fatal */
+    }
+  }, [messages, wallet, restored, relayLink]);
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +97,11 @@ export default function OnboardingWindow() {
       const res = await fetch("/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated, payoutWallet: wallet }),
+        body: JSON.stringify({
+          messages: updated,
+          payoutWallet: wallet,
+          authEmail: email,
+        }),
       });
       const data = await res.json();
 
@@ -77,6 +120,11 @@ export default function OnboardingWindow() {
 
       if (data.finalized && data.slug) {
         setRelayLink(`${window.location.origin}/chat/${data.slug}`);
+        try {
+          sessionStorage.removeItem(DRAFT_KEY);
+        } catch {
+          /* ignore */
+        }
       }
     } catch {
       setMessages((prev) => [
@@ -134,9 +182,16 @@ export default function OnboardingWindow() {
         </span>
 
         {!relayLink && (
-          <div style={{ marginLeft: "auto" }}>
-            {wallet ? (
-              <span className="badge">
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {wallet && (
+              <span className="badge" title="Payout wallet">
                 <span className="badge-dot" />
                 <span
                   className="mono"
@@ -145,9 +200,21 @@ export default function OnboardingWindow() {
                   {wallet.slice(0, 6)}…{wallet.slice(-4)}
                 </span>
               </span>
-            ) : (
+            )}
+            {email && !wallet && (
+              <span className="badge" title="Linked Google account">
+                <span className="badge-dot" />
+                <span
+                  className="mono"
+                  style={{ fontSize: 11, color: "var(--accent-soft)" }}
+                >
+                  {email}
+                </span>
+              </span>
+            )}
+            {!wallet && (
               <button className="btn btn-ghost" onClick={() => setAuthOpen(true)}>
-                Sign in
+                {email ? "Add wallet" : "Sign in"}
               </button>
             )}
           </div>

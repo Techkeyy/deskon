@@ -1,51 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { connectWallet, signMessage, dashboardAuthMessage } from "@/lib/wallet";
+import { getGoogleSession, googleSignOut } from "@/lib/supabase-browser";
 import AuthModal from "@/components/AuthModal";
 import { Order, SellerLedger, Withdrawal } from "@/types";
 
 interface DashData {
-  seller: { displayName: string; slug: string; payoutWallet: string };
+  seller: {
+    displayName: string;
+    slug: string;
+    payoutWallet: string;
+    authEmail: string | null;
+  };
   ledger: SellerLedger;
 }
 
+// Credentials sent to the API — either a wallet signature or a Google token.
+type Creds =
+  | { wallet: string; message: string; signature: string }
+  | { googleToken: string };
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
+  const [checkingGoogle, setCheckingGoogle] = useState(true);
   const [withdrawing, setWithdrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashData | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  // How we authed this session — so withdraw can re-auth the same way.
+  const [creds, setCreds] = useState<Creds | null>(null);
 
-  async function authenticate(addr?: string) {
+  async function walletCreds(addr?: string): Promise<Creds> {
     const wallet = addr ?? (await connectWallet());
     const message = dashboardAuthMessage(wallet);
     const signature = await signMessage(wallet, message);
     return { wallet, message, signature };
   }
 
-  async function loadDashboard(addr?: string) {
+  const load = useCallback(async (c: Creds) => {
     setError(null);
     setLoading(true);
     try {
-      const creds = await authenticate(addr);
       const res = await fetch("/api/dashboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(creds),
+        body: JSON.stringify(c),
       });
       const json = await res.json();
       if (!json.ok) {
         setError(json.error);
         return;
       }
+      setCreds(c);
       setData(json);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Returning from a Google redirect? Load straight into the dashboard.
+  useEffect(() => {
+    (async () => {
+      const g = await getGoogleSession();
+      if (g) await load({ googleToken: g.token });
+      setCheckingGoogle(false);
+    })();
+  }, [load]);
+
+  async function loadWithWallet(addr?: string) {
+    try {
+      const c = await walletCreds(addr);
+      await load(c);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function signOut() {
+    if (creds && "googleToken" in creds) await googleSignOut();
+    setData(null);
+    setCreds(null);
+    setError(null);
   }
 
   async function withdraw() {
@@ -53,23 +92,25 @@ export default function DashboardPage() {
     setWithdrawing(true);
     setError(null);
     try {
-      const creds = await authenticate();
+      // Reuse Google creds if that's how we logged in; else re-sign with wallet.
+      let c: Creds;
+      if (creds && "googleToken" in creds) {
+        const g = await getGoogleSession();
+        c = g ? { googleToken: g.token } : creds;
+      } else {
+        c = await walletCreds();
+      }
       const res = await fetch("/api/dashboard/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...creds, amount: data.ledger.available }),
+        body: JSON.stringify({ ...c, amount: data.ledger.available }),
       });
       const json = await res.json();
       if (!json.ok) {
         setError(json.error);
         return;
       }
-      const refreshed = await fetch("/api/dashboard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(creds),
-      });
-      setData(await refreshed.json());
+      await load(c);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -94,7 +135,13 @@ export default function DashboardPage() {
             Deskon
           </span>
         </Link>
-        <span className="eyebrow">Seller dashboard</span>
+        {data ? (
+          <button className="navlink" onClick={signOut}>
+            Sign out
+          </button>
+        ) : (
+          <span className="eyebrow">Seller dashboard</span>
+        )}
       </nav>
 
       <main
@@ -113,7 +160,9 @@ export default function DashboardPage() {
               className="display"
               style={{ fontSize: "clamp(30px, 5vw, 44px)", marginTop: 14 }}
             >
-              Connect to see what your closer collected.
+              {checkingGoogle
+                ? "Opening your dashboard…"
+                : "Connect to see what your closer collected."}
             </h1>
             <p
               style={{
@@ -123,17 +172,20 @@ export default function DashboardPage() {
                 color: "var(--text-2)",
               }}
             >
-              Connect the wallet you set up your Relay with. You&apos;ll sign a
-              message to prove it&apos;s yours — no transaction, no gas.
+              Sign in with the wallet your Relay is bound to, or with the Google
+              account you linked at setup. Wallet sign-in asks for a signature —
+              no transaction, no gas.
             </p>
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: 32 }}
-              onClick={() => setAuthOpen(true)}
-              disabled={loading}
-            >
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
+            {!checkingGoogle && (
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 32 }}
+                onClick={() => setAuthOpen(true)}
+                disabled={loading}
+              >
+                {loading ? "Signing in…" : "Sign in"}
+              </button>
+            )}
             {error && (
               <p style={{ marginTop: 18, fontSize: 14, color: "var(--accent-soft)" }}>
                 {error}
@@ -153,9 +205,9 @@ export default function DashboardPage() {
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
-        onWalletConnected={(a) => loadDashboard(a)}
+        onWalletConnected={(a) => loadWithWallet(a)}
         title="Open your dashboard"
-        subtitle="Connect the wallet your Relay is bound to. You'll sign a message — no gas."
+        subtitle="Connect the wallet your Relay is bound to, or continue with the Google account you linked at setup."
       />
     </div>
   );
