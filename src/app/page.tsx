@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const REPO = "https://github.com/Techkeyy/deskon";
 // Real settled order from Base mainnet — show, don't claim.
@@ -155,12 +156,45 @@ export default function Home() {
               </div>
             </div>
 
-            {/* The deal, set in type — a real settlement. */}
+            {/* The deal, set in type — the closer presents a real settlement. */}
             <div>
-              <p className="eyebrow" style={{ marginBottom: 14 }}>
-                Transcript — order 26489c6e
-              </p>
-              <div className="transcript">
+              <div
+                style={{
+                  position: "relative",
+                  width: "82%",
+                  margin: "0 auto",
+                  aspectRatio: "1.15",
+                }}
+                aria-hidden="true"
+              >
+                <Image
+                  src="/closer.png"
+                  alt=""
+                  fill
+                  priority
+                  sizes="(max-width: 920px) 82vw, 440px"
+                  style={{
+                    objectFit: "cover",
+                    objectPosition: "50% 10%",
+                    mixBlendMode: "multiply",
+                    // fade the crop edges so her cream ground melts into the page
+                    maskImage:
+                      "radial-gradient(ellipse 70% 62% at 50% 45%, black 52%, transparent 82%)",
+                    WebkitMaskImage:
+                      "radial-gradient(ellipse 70% 62% at 50% 45%, black 52%, transparent 82%)",
+                  }}
+                />
+              </div>
+              <div
+                className="transcript"
+                style={{ position: "relative", zIndex: 2, marginTop: -104 }}
+              >
+                <p
+                  className="eyebrow"
+                  style={{ marginBottom: 8, letterSpacing: "0.22em" }}
+                >
+                  Transcript — order 26489c6e
+                </p>
                 <div className="t-row">
                   <span className="t-who">Buyer</span>
                   <span className="t-line">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import AuthModal from "@/components/AuthModal";
 
 interface Message {
@@ -116,31 +117,18 @@ export default function OnboardingWindow() {
           borderBottom: "1px solid var(--border)",
         }}
       >
+        <Link href="/">
+          <span className="display" style={{ fontSize: 19, fontWeight: 700 }}>
+            Deskon
+          </span>
+        </Link>
         <span
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 8,
-            background: "var(--accent)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            fontSize: 16,
-          }}
-        >
-          D
+          aria-hidden="true"
+          style={{ width: 1, height: 16, background: "var(--border-strong)" }}
+        />
+        <span className="eyebrow" style={{ fontSize: 9.5 }}>
+          Set up your Relay
         </span>
-        <div style={{ lineHeight: 1.3 }}>
-          <div className="display" style={{ fontSize: 15, fontWeight: 700 }}>
-            Set up your Relay
-          </div>
-          <div className="eyebrow" style={{ fontSize: 9 }}>
-            Deskon onboarding
-          </div>
-        </div>
 
         {!relayLink && (
           <div style={{ marginLeft: "auto" }}>
@@ -163,61 +151,38 @@ export default function OnboardingWindow() {
         )}
       </header>
 
-      {/* Messages */}
+      {/* Messages — typeset transcript, no bubbles */}
       <div
         className="scroll-thin"
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "24px 22px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
+          padding: "18px 26px 24px",
         }}
       >
         {messages.map((msg, i) => (
           <div
             key={i}
-            style={{
-              display: "flex",
-              justifyContent:
-                msg.role === "user" ? "flex-end" : "flex-start",
-            }}
+            className={`t-msg${msg.role === "user" ? " t-msg-user" : ""}`}
           >
-            <div
-              style={{
-                maxWidth: "82%",
-                padding: "12px 16px",
-                borderRadius: 14,
-                fontSize: 14.5,
-                lineHeight: 1.55,
-                whiteSpace: "pre-wrap",
-                ...(msg.role === "user"
-                  ? { background: "var(--accent)", color: "#fff" }
-                  : {
-                      background: "var(--surface)",
-                      color: "var(--text-2)",
-                      border: "1px solid var(--border)",
-                    }),
-              }}
+            <span
+              className="t-who"
+              style={
+                msg.role === "user"
+                  ? { color: "var(--accent-soft)" }
+                  : undefined
+              }
             >
-              {renderContent(msg.content)}
-            </div>
+              {msg.role === "user" ? "You" : "Deskon"}
+            </span>
+            <div className="t-body">{renderContent(msg.content)}</div>
           </div>
         ))}
 
         {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 14,
-                padding: "14px 16px",
-                display: "flex",
-                gap: 5,
-              }}
-            >
+          <div className="t-msg" style={{ borderBottom: "none" }}>
+            <span className="t-who">Deskon</span>
+            <div style={{ display: "flex", gap: 5, paddingTop: 6 }}>
               <span className="typing-dot" />
               <span className="typing-dot" style={{ animationDelay: "0.2s" }} />
               <span className="typing-dot" style={{ animationDelay: "0.4s" }} />
@@ -316,31 +281,22 @@ export default function OnboardingWindow() {
             gap: 8,
           }}
         >
-          <div style={{ display: "flex", gap: 10 }}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your answer…"
-            disabled={loading}
-            style={{
-              flex: 1,
-              background: "var(--surface)",
-              border: "1px solid var(--border-strong)",
-              borderRadius: 10,
-              padding: "12px 16px",
-              fontSize: 14.5,
-              color: "var(--text-1)",
-              outline: "none",
-            }}
-          />
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading || !input.trim()}
-          >
-            Send
-          </button>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <input
+              type="text"
+              className="line-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your answer…"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              className="btn btn-ghost"
+              disabled={loading || !input.trim()}
+            >
+              Send
+            </button>
           </div>
         </form>
       )}

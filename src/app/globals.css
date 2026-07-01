@@ -237,6 +237,49 @@ section[id] {
   color: var(--text-2);
 }
 
+/* ── editorial chat: messages as typeset transcript ─────── */
+
+.t-msg {
+  display: flex;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.t-msg .t-who {
+  padding-top: 3px;
+}
+.t-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+.t-msg-user .t-body {
+  color: var(--text-1);
+}
+
+.line-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: 0;
+  padding: 12px 2px;
+  font-size: 15px;
+  font-family: var(--body);
+  color: var(--text-1);
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+.line-input:focus {
+  border-bottom-color: var(--accent);
+}
+.line-input::placeholder {
+  color: var(--text-3);
+}
+
 /* ── settlement tape ────────────────────────────────────── */
 
 .tape {
