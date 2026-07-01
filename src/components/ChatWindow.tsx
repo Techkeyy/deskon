@@ -83,9 +83,14 @@ export default function ChatWindow({
         {
           role: "assistant",
           content: data.message,
+          // Map the raw function-call name to the metadata type the renderer
+          // expects — initiate_payment is what puts the Pay button on screen.
           metadata: data.functionCall
             ? {
-                type: data.functionCall.name,
+                type:
+                  data.functionCall.name === "initiate_payment"
+                    ? "payment_prompt"
+                    : "deal_summary",
                 amount:
                   data.functionCall.args?.amount ||
                   data.functionCall.args?.price,
