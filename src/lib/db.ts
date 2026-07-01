@@ -167,50 +167,6 @@ export async function updateSeller(
   return data ? toSeller(data) : null;
 }
 
-/** Seed the demo seller idempotently. Its service is the Deskon-managed CROO service. */
-export async function seedDemoSeller(): Promise<SellerProfile> {
-  const existing = await getSellerBySlug("demo");
-  const envServiceId = process.env.CROO_DEMO_SERVICE_ID || null;
-
-  if (existing) {
-    if (!existing.crooServiceId && envServiceId) {
-      const updated = await updateSeller(existing.id, {
-        crooServiceId: envServiceId,
-      });
-      return updated ?? existing;
-    }
-    return existing;
-  }
-
-  return createSeller({
-    slug: "demo",
-    displayName: "Demo Designer",
-    payoutWallet: null,
-    crooServiceId: envServiceId,
-    services: [
-      {
-        name: "Logo Design",
-        description: "Custom logo design for brands and businesses",
-        minPrice: 50,
-        maxPrice: 500,
-        currency: "USDC",
-        examples: ["Minimalist logo", "Brand kit", "Icon design"],
-      },
-      {
-        name: "Brand Identity",
-        description:
-          "Full brand identity package — logo, colors, typography",
-        minPrice: 200,
-        maxPrice: 2000,
-        currency: "USDC",
-        examples: ["Startup branding", "Rebrand", "Visual identity system"],
-      },
-    ],
-    personaPrompt:
-      "You are the AI assistant for Demo Designer, a professional graphic designer specializing in logo and brand identity design. You are friendly, professional, and direct. You help potential clients scope their project, agree on pricing, and close the deal within the stated price ranges.",
-  });
-}
-
 // ── orders (the ledger) ─────────────────────────────────
 
 export async function createOrder(input: {

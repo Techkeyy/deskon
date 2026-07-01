@@ -1,5 +1,5 @@
 import ChatWindow from "@/components/ChatWindow";
-import { getSellerBySlug, seedDemoSeller } from "@/lib/db";
+import { getSellerBySlug } from "@/lib/db";
 
 export default async function ChatPage({
   params,
@@ -7,8 +7,6 @@ export default async function ChatPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-
-  if (slug === "demo") await seedDemoSeller();
   const seller = await getSellerBySlug(slug);
 
   const displayName =

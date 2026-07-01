@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateResponse } from "@/lib/ai";
-import { getSellerBySlug, seedDemoSeller } from "@/lib/db";
+import { getSellerBySlug } from "@/lib/db";
 import {
   getConversation,
   createConversation,
@@ -18,9 +18,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Keep the demo seller present (idempotent).
-    if (slug === "demo") await seedDemoSeller();
 
     const seller = await getSellerBySlug(slug);
     if (!seller) {
