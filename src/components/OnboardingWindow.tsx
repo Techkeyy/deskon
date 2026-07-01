@@ -117,6 +117,9 @@ export default function OnboardingWindow() {
           borderBottom: "1px solid var(--border)",
         }}
       >
+        <Link href="/" className="back-btn" aria-label="Back to home">
+          ←
+        </Link>
         <Link href="/">
           <span className="display" style={{ fontSize: 19, fontWeight: 700 }}>
             Deskon

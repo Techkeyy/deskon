@@ -237,6 +237,32 @@ section[id] {
   color: var(--text-2);
 }
 
+/* ── back arrow (chat headers) ──────────────────────────── */
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, color 0.18s ease,
+    border-color 0.18s ease;
+}
+.back-btn:hover {
+  transform: scale(0.94);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
 /* ── editorial chat: messages as typeset transcript ─────── */
 
 .t-msg {
