@@ -232,6 +232,8 @@ function Ledger({
         Earnings
       </h1>
 
+      <RelayLink slug={seller.slug} />
+
       {/* Stat cards */}
       <div
         style={{
@@ -322,6 +324,67 @@ function Ledger({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function RelayLink({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false);
+  const link =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/chat/${slug}`
+      : `/chat/${slug}`;
+
+  function copy() {
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div style={{ marginTop: 24, maxWidth: 560 }}>
+      <span className="eyebrow" style={{ fontSize: 9.5 }}>
+        Your Relay link
+      </span>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginTop: 10,
+          alignItems: "center",
+        }}
+      >
+        <code
+          className="mono"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "var(--surface)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: 8,
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "var(--text-1)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {link}
+        </code>
+        <button onClick={copy} className="btn btn-ghost" style={{ flexShrink: 0 }}>
+          {copied ? "Copied" : "Copy"}
+        </button>
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          className="navlink"
+          style={{ color: "var(--accent-soft)", flexShrink: 0 }}
+        >
+          Open →
+        </a>
+      </div>
     </div>
   );
 }
