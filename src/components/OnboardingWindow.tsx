@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { connectWallet } from "@/lib/wallet";
+import AuthModal from "@/components/AuthModal";
 
 interface Message {
   role: "user" | "assistant";
@@ -33,18 +33,8 @@ export default function OnboardingWindow() {
   const [relayLink, setRelayLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [wallet, setWallet] = useState<string | null>(null);
-  const [walletError, setWalletError] = useState<string | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  async function handleConnect() {
-    setWalletError(null);
-    try {
-      const addr = await connectWallet();
-      setWallet(addr);
-    } catch (e: any) {
-      setWalletError(e.message);
-    }
-  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -165,8 +155,8 @@ export default function OnboardingWindow() {
                 </span>
               </span>
             ) : (
-              <button className="btn btn-ghost" onClick={handleConnect}>
-                Connect wallet
+              <button className="btn btn-ghost" onClick={() => setAuthOpen(true)}>
+                Sign in
               </button>
             )}
           </div>
@@ -326,11 +316,6 @@ export default function OnboardingWindow() {
             gap: 8,
           }}
         >
-          {walletError && (
-            <span style={{ fontSize: 12, color: "var(--accent-soft)" }}>
-              {walletError}
-            </span>
-          )}
           <div style={{ display: "flex", gap: 10 }}>
           <input
             type="text"
@@ -359,6 +344,14 @@ export default function OnboardingWindow() {
           </div>
         </form>
       )}
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onWalletConnected={(a) => setWallet(a)}
+        title="Connect to get paid"
+        subtitle="Connect your Base wallet so earnings reach you — or continue with Google."
+      />
     </div>
   );
 }

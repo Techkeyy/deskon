@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  connectWallet,
-  signMessage,
-  dashboardAuthMessage,
-} from "@/lib/wallet";
+import { connectWallet, signMessage, dashboardAuthMessage } from "@/lib/wallet";
+import AuthModal from "@/components/AuthModal";
 import { Order, SellerLedger, Withdrawal } from "@/types";
 
 interface DashData {
@@ -19,19 +16,20 @@ export default function DashboardPage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashData | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
 
-  async function authenticate() {
-    const wallet = await connectWallet();
+  async function authenticate(addr?: string) {
+    const wallet = addr ?? (await connectWallet());
     const message = dashboardAuthMessage(wallet);
     const signature = await signMessage(wallet, message);
     return { wallet, message, signature };
   }
 
-  async function connect() {
+  async function loadDashboard(addr?: string) {
     setError(null);
     setLoading(true);
     try {
-      const creds = await authenticate();
+      const creds = await authenticate(addr);
       const res = await fetch("/api/dashboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,10 +129,10 @@ export default function DashboardPage() {
             <button
               className="btn btn-primary"
               style={{ marginTop: 32 }}
-              onClick={connect}
+              onClick={() => setAuthOpen(true)}
               disabled={loading}
             >
-              {loading ? "Waiting for wallet…" : "Connect wallet"}
+              {loading ? "Signing in…" : "Sign in"}
             </button>
             {error && (
               <p style={{ marginTop: 18, fontSize: 14, color: "var(--accent-soft)" }}>
@@ -151,6 +149,14 @@ export default function DashboardPage() {
           />
         )}
       </main>
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onWalletConnected={(a) => loadDashboard(a)}
+        title="Open your dashboard"
+        subtitle="Connect the wallet your Relay is bound to. You'll sign a message — no gas."
+      />
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function Home() {
           justifyContent: "space-between",
           padding: "0 32px",
           borderBottom: "1px solid var(--border)",
-          background: "rgba(10,10,12,0.72)",
+          background: "rgba(247,245,239,0.8)",
           backdropFilter: "blur(12px)",
         }}
       >

@@ -1,31 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  /* surfaces */
-  --bg: #0a0a0c;
-  --bg-2: #0d0d10;
-  --surface: #141418;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.14);
+  /* warm light editorial — no pure white, no pure black */
+  --bg: #f7f5ef;
+  --bg-2: #fcfbf7;
+  --surface: #ffffff;
+  --border: rgba(26, 24, 19, 0.1);
+  --border-strong: rgba(26, 24, 19, 0.2);
 
   /* text */
-  --text-1: #ececee;
-  --text-2: #a4a4ac;
-  --text-3: #6a6a74;
+  --text-1: #1a1813;
+  --text-2: #57544b;
+  --text-3: #938e80;
 
-  /* the one precious accent — Deskon orange */
-  --accent: #ff5a1f;
-  --accent-soft: #ff7a47;
-  --accent-dim: rgba(255, 90, 31, 0.12);
-  --accent-border: rgba(255, 90, 31, 0.32);
+  /* the one precious accent — Deskon orange, tuned for a light ground */
+  --accent: #e0490f;
+  --accent-soft: #c8420e;
+  --accent-dim: rgba(224, 73, 15, 0.09);
+  --accent-border: rgba(224, 73, 15, 0.32);
 
   /* a single rarer accent, for proof/verified moments only */
-  --verify: #4ade80;
-  --verify-dim: rgba(74, 222, 128, 0.1);
-  --verify-border: rgba(74, 222, 128, 0.28);
+  --verify: #15803d;
+  --verify-dim: rgba(21, 128, 61, 0.08);
+  --verify-border: rgba(21, 128, 61, 0.28);
 
-  --font-display: var(--font-display), "Syne", sans-serif;
-  --font-grotesk: var(--font-grotesk), "Space Grotesk", sans-serif;
+  /* font stacks — the --font-* vars are set on <html> by next/font (layout.tsx) */
+  --display: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  --grotesk: var(--font-grotesk), "Space Grotesk", sans-serif;
+  --body: var(--font-body), "Inter", system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, monospace;
   --nav-h: 68px;
 }
 
@@ -34,9 +37,6 @@
   --color-bg-2: var(--bg-2);
   --color-surface: var(--surface);
   --color-accent: var(--accent);
-  --font-display: var(--font-display);
-  --font-grotesk: var(--font-grotesk);
-  --font-mono: var(--font-mono);
 }
 
 html {
@@ -46,8 +46,11 @@ html {
 body {
   background: var(--bg);
   color: var(--text-2);
-  font-family: var(--font-grotesk);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 section[id] {
@@ -57,28 +60,28 @@ section[id] {
 /* ── type roles ─────────────────────────────────────────── */
 
 .display {
-  font-family: var(--font-display);
+  font-family: var(--display);
   color: var(--text-1);
-  letter-spacing: -0.02em;
-  line-height: 1.02;
-  font-weight: 800;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.06;
 }
 
 .num {
-  font-family: var(--font-grotesk);
+  font-family: var(--grotesk);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
   letter-spacing: -0.01em;
 }
 
 .mono {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
 }
 
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.28em;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--text-3);
 }
@@ -86,17 +89,18 @@ section[id] {
 /* ── buttons (law: shrink + flip toward accent on hover) ── */
 
 .btn {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 14px 30px;
-  border-radius: 5px;
+  padding: 13px 26px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   cursor: pointer;
   border: 1px solid transparent;
+  white-space: nowrap;
   transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease,
     border-color 0.18s ease;
 }
@@ -106,7 +110,7 @@ section[id] {
 
 .btn-primary {
   background: var(--text-1);
-  color: var(--bg);
+  color: var(--bg-2);
 }
 .btn-primary:hover {
   transform: scale(0.97);
@@ -116,12 +120,12 @@ section[id] {
 
 .btn-ghost {
   background: transparent;
-  color: var(--text-2);
+  color: var(--text-1);
   border-color: var(--border-strong);
 }
 .btn-ghost:hover {
   transform: scale(0.97);
-  color: var(--accent-soft);
+  color: var(--accent);
   border-color: var(--accent-border);
 }
 
@@ -134,15 +138,15 @@ section[id] {
 /* ── nav ────────────────────────────────────────────────── */
 
 .navlink {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.2em;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
   cursor: pointer;
   background: none;
   border: none;
-  transition: color 0.18s ease;
+  transition: color 0.16s ease;
 }
 .navlink:hover {
   color: var(--text-1);
@@ -175,7 +179,7 @@ section[id] {
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
+  box-shadow: 0 0 8px rgba(224, 73, 15, 0.5);
 }
 
 /* ── scrollbars in chat ─────────────────────────────────── */
@@ -200,4 +204,63 @@ section[id] {
   border-radius: 50%;
   background: var(--text-3);
   animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+/* ── modal ──────────────────────────────────────────────── */
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(26, 24, 19, 0.4);
+  backdrop-filter: blur(4px);
+  animation: overlay-in 0.16s ease;
+}
+.modal-sheet {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px 28px;
+  box-shadow: 0 24px 60px rgba(26, 24, 19, 0.18);
+  animation: sheet-in 0.18s ease;
+}
+.auth-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+.auth-option:hover {
+  border-color: var(--accent-border);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+.auth-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }

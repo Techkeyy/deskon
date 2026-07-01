@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { Syne, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import {
+  Cormorant_Garamond,
+  Space_Grotesk,
+  JetBrains_Mono,
+  Inter,
+} from "next/font/google";
 import "./globals.css";
 
-const syne = Syne({
+const cormorant = Cormorant_Garamond({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const spaceGrotesk = Space_Grotesk({
@@ -17,6 +22,12 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   weight: ["400", "500"],
+});
+
+const inter = Inter({
+  variable: "--font-body",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -33,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
+      className={`${cormorant.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${inter.variable} antialiased`}
     >
       <body>{children}</body>
     </html>
