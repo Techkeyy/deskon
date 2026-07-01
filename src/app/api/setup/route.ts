@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runOnboardingTurn } from "@/lib/onboarding";
-import { createSeller, generateSlug } from "@/lib/store";
+import { createSeller, generateSlug } from "@/lib/db";
 import { ChatMessage } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, payoutWallet } = await req.json();
 
     if (!Array.isArray(messages)) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
@@ -21,15 +21,23 @@ export async function POST(req: NextRequest) {
     const result = await runOnboardingTurn(history);
 
     if (result.finalized) {
-      const slug = generateSlug(result.finalized.displayName);
-      const seller = createSeller({
-        walletAddress: "0x0000000000000000000000000000000000000000",
-        crooAgentId: "",
-        crooApiKey: "",
-        displayName: result.finalized.displayName,
+      // A payout wallet is required to finalize — it's the seller's identity + payout.
+      if (!payoutWallet || !/^0x[a-fA-F0-9]{40}$/.test(payoutWallet)) {
+        return NextResponse.json({
+          message:
+            "Almost there — connect your Base wallet above so I know where to send your earnings, then send your last message again.",
+          finalized: false,
+          needsWallet: true,
+        });
+      }
+
+      const slug = await generateSlug(result.finalized.displayName);
+      const seller = await createSeller({
         slug,
-        services: result.finalized.services,
+        displayName: result.finalized.displayName,
         personaPrompt: result.finalized.personaPrompt,
+        services: result.finalized.services,
+        payoutWallet,
       });
 
       return NextResponse.json({

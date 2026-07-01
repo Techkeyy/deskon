@@ -44,6 +44,9 @@ export default function Home() {
           <Link href="/chat/demo" className="navlink">
             Demo
           </Link>
+          <Link href="/dashboard" className="navlink">
+            Dashboard
+          </Link>
         </div>
       </nav>
 

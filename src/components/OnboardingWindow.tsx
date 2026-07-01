@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { connectWallet } from "@/lib/wallet";
 
 interface Message {
   role: "user" | "assistant";
@@ -24,14 +25,26 @@ export default function OnboardingWindow() {
     {
       role: "assistant",
       content:
-        "Let's build your closer. No forms — just tell me about your work and I'll wire it up.\n\nTo start: **what do you do?**",
+        "Let's build your closer. No forms — just tell me about your work and I'll wire it up. When you're ready, **connect your payout wallet** (top right) so I know where your earnings go.\n\nTo start: **what do you do?**",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [relayLink, setRelayLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [wallet, setWallet] = useState<string | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  async function handleConnect() {
+    setWalletError(null);
+    try {
+      const addr = await connectWallet();
+      setWallet(addr);
+    } catch (e: any) {
+      setWalletError(e.message);
+    }
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,7 +67,7 @@ export default function OnboardingWindow() {
       const res = await fetch("/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
+        body: JSON.stringify({ messages: updated, payoutWallet: wallet }),
       });
       const data = await res.json();
 
@@ -138,6 +151,26 @@ export default function OnboardingWindow() {
             Deskon onboarding
           </div>
         </div>
+
+        {!relayLink && (
+          <div style={{ marginLeft: "auto" }}>
+            {wallet ? (
+              <span className="badge">
+                <span className="badge-dot" />
+                <span
+                  className="mono"
+                  style={{ fontSize: 11, color: "var(--accent-soft)" }}
+                >
+                  {wallet.slice(0, 6)}…{wallet.slice(-4)}
+                </span>
+              </span>
+            ) : (
+              <button className="btn btn-ghost" onClick={handleConnect}>
+                Connect wallet
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Messages */}
@@ -258,19 +291,24 @@ export default function OnboardingWindow() {
               Share it anywhere — bio, DM, a post. Anyone who opens it talks to
               your closer, which scopes the deal and settles payment on-chain.
             </p>
-            <a
-              href={relayLink}
-              target="_blank"
-              rel="noreferrer"
-              className="navlink"
-              style={{
-                display: "inline-block",
-                marginTop: 14,
-                color: "var(--accent-soft)",
-              }}
-            >
-              Preview your Relay →
-            </a>
+            <div style={{ display: "flex", gap: 20, marginTop: 14 }}>
+              <a
+                href={relayLink}
+                target="_blank"
+                rel="noreferrer"
+                className="navlink"
+                style={{ color: "var(--accent-soft)" }}
+              >
+                Preview your Relay →
+              </a>
+              <a
+                href="/dashboard"
+                className="navlink"
+                style={{ color: "var(--text-2)" }}
+              >
+                Track earnings →
+              </a>
+            </div>
           </div>
         )}
         <div ref={bottomRef} />
@@ -284,9 +322,16 @@ export default function OnboardingWindow() {
             padding: "14px 18px",
             borderTop: "1px solid var(--border)",
             display: "flex",
-            gap: 10,
+            flexDirection: "column",
+            gap: 8,
           }}
         >
+          {walletError && (
+            <span style={{ fontSize: 12, color: "var(--accent-soft)" }}>
+              {walletError}
+            </span>
+          )}
+          <div style={{ display: "flex", gap: 10 }}>
           <input
             type="text"
             value={input}
@@ -311,6 +356,7 @@ export default function OnboardingWindow() {
           >
             Send
           </button>
+          </div>
         </form>
       )}
     </div>

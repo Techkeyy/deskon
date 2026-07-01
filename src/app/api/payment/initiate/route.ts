@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConversation, getSellerById, updateConversationStatus, addMessage } from "@/lib/store";
+import { getSellerById, createOrder } from "@/lib/db";
+import {
+  getConversation,
+  updateConversationStatus,
+  addMessage,
+} from "@/lib/store";
 import { createAndPayOrder } from "@/lib/payment";
 import { hasRequesterKey } from "@/lib/croo-clients";
 
@@ -16,19 +21,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     }
 
-    const seller = getSellerById(convo.sellerId);
+    const seller = await getSellerById(convo.sellerId);
     if (!seller) {
       return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
 
-    // Find the matching service's CROO serviceId
-    const service = seller.services[0]; // MVP: use primary service
-    const crooServiceId = service?.crooServiceId;
+    // Path B: every deal settles through the Deskon-managed CROO service.
+    const crooServiceId = seller.crooServiceId || process.env.CROO_DEMO_SERVICE_ID;
 
     if (!hasRequesterKey()) {
       return NextResponse.json({
         ok: false,
-        error: "Payment not configured: Deskon Pay requester agent not registered yet.",
+        error: "Payment not configured: Deskon Pay requester agent not registered.",
         stage: "config",
       });
     }
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (!crooServiceId) {
       return NextResponse.json({
         ok: false,
-        error: "Seller service not linked to a CROO service ID yet.",
+        error: "No CROO settlement service configured.",
         stage: "config",
       });
     }
@@ -45,17 +49,32 @@ export async function POST(req: NextRequest) {
       scope: convo.agreedScope || "",
       price: convo.agreedPrice || 0,
       via: "deskon-relay",
+      seller: seller.slug,
     });
 
     const result = await createAndPayOrder(crooServiceId, requirements);
 
     if (result.ok) {
+      // Attribute the settled deal to this seller in the ledger.
+      await createOrder({
+        sellerId: seller.id,
+        crooOrderId: result.orderId ?? null,
+        amount: convo.agreedPrice || 0,
+        scope: convo.agreedScope ?? null,
+        status: "completed",
+        payTx: result.payTxHash ?? null,
+        buyerRef: conversationId,
+      });
+
       updateConversationStatus(conversationId, "completed", {
         crooOrderId: result.orderId,
       });
       addMessage(conversationId, {
         role: "assistant",
-        content: `✅ Payment confirmed! Order \`${result.orderId?.slice(0, 8)}...\` is locked in escrow on Base. ${seller.displayName} will reach out to start the work.`,
+        content: `Payment cleared — order ${result.orderId?.slice(
+          0,
+          8
+        )} is locked in escrow on Base.`,
         metadata: { type: "payment_confirmed", orderId: result.orderId },
       });
     }

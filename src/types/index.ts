@@ -1,12 +1,13 @@
 export interface SellerProfile {
   id: string;
-  walletAddress: string;
-  crooAgentId: string;
-  crooApiKey: string;
-  displayName: string;
   slug: string;
-  services: SellerService[];
+  displayName: string;
   personaPrompt: string;
+  /** Base wallet the seller connected — payout destination AND dashboard identity. */
+  payoutWallet: string | null;
+  services: SellerService[];
+  /** CROO service deals settle through. Path B: the Deskon-managed shared service. */
+  crooServiceId: string | null;
   createdAt: string;
 }
 
@@ -17,8 +18,40 @@ export interface SellerService {
   maxPrice: number;
   currency: string;
   examples: string[];
-  /** The CROO service ID this maps to (fixed price on-chain). */
-  crooServiceId?: string;
+}
+
+export interface Order {
+  id: string;
+  sellerId: string;
+  crooOrderId: string | null;
+  amount: number;
+  currency: string;
+  scope: string | null;
+  status: "pending" | "paid" | "completed" | "withdrawn";
+  payTx: string | null;
+  buyerRef: string | null;
+  createdAt: string;
+}
+
+export interface Withdrawal {
+  id: string;
+  sellerId: string;
+  amount: number;
+  toWallet: string;
+  status: "requested" | "sent" | "failed";
+  tx: string | null;
+  createdAt: string;
+}
+
+export interface SellerLedger {
+  /** Sum of completed (settled) orders. */
+  collected: number;
+  /** Orders in flight — paid but not yet completed, or pending. */
+  pending: number;
+  /** Collected minus what's already been withdrawn/requested. */
+  available: number;
+  orders: Order[];
+  withdrawals: Withdrawal[];
 }
 
 export interface Conversation {

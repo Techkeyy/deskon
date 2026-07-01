@@ -1,28 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateResponse } from "@/lib/ai";
-import { getSellerBySlug, getConversation, createConversation, addMessage, updateConversationStatus } from "@/lib/store";
-import { seedDemoSeller } from "@/lib/store";
+import { getSellerBySlug, seedDemoSeller } from "@/lib/db";
+import {
+  getConversation,
+  createConversation,
+  addMessage,
+  updateConversationStatus,
+} from "@/lib/store";
 
 export async function POST(req: NextRequest) {
   try {
     const { slug, conversationId, message } = await req.json();
 
     if (!slug || !message) {
-      return NextResponse.json({ error: "slug and message are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "slug and message are required" },
+        { status: 400 }
+      );
     }
 
-    // Seed demo seller on every request (idempotent)
-    seedDemoSeller();
+    // Keep the demo seller present (idempotent).
+    if (slug === "demo") await seedDemoSeller();
 
-    const seller = getSellerBySlug(slug);
+    const seller = await getSellerBySlug(slug);
     if (!seller) {
       return NextResponse.json({ error: "Seller not found" }, { status: 404 });
     }
 
     let convo = conversationId ? getConversation(conversationId) : null;
-    if (!convo) {
-      convo = createConversation(seller.id, "human");
-    }
+    if (!convo) convo = createConversation(seller.id, "human");
 
     addMessage(convo.id, { role: "user", content: message });
 
@@ -33,7 +39,6 @@ export async function POST(req: NextRequest) {
         agreedPrice: aiResponse.functionCall.args.amount,
         agreedScope: aiResponse.functionCall.args.scope_summary,
       });
-
       addMessage(convo.id, {
         role: "assistant",
         content: aiResponse.message,
