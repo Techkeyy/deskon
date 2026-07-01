@@ -88,32 +88,10 @@ export default function Home() {
         >
           <div className="hero-grid">
             <div>
-              <a
-                href={BASESCAN}
-                target="_blank"
-                rel="noreferrer"
-                className="badge"
-                style={{ textDecoration: "none" }}
-              >
-                <span className="badge-dot" />
-                <span
-                  className="num"
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "0.16em",
-                    textTransform: "uppercase",
-                    color: "var(--accent-soft)",
-                  }}
-                >
-                  Live on Base mainnet
-                </span>
-              </a>
-
               <h1
                 className="display"
                 style={{
                   fontSize: "clamp(44px, 6.2vw, 78px)",
-                  marginTop: 30,
                 }}
               >
                 Share one link.
