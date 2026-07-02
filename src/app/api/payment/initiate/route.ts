@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "conversationId required" }, { status: 400 });
     }
 
-    const convo = getConversation(conversationId);
+    const convo = await getConversation(conversationId);
     if (!convo) {
       return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     }
@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
         buyerRef: conversationId,
       });
 
-      updateConversationStatus(conversationId, "completed", {
+      await updateConversationStatus(conversationId, "completed", {
         crooOrderId: result.orderId,
       });
-      addMessage(conversationId, {
+      await addMessage(conversationId, {
         role: "assistant",
         content: `Payment cleared — order ${result.orderId?.slice(
           0,

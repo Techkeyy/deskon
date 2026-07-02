@@ -36,6 +36,24 @@ create table if not exists orders (
 );
 create index if not exists orders_seller_idx on orders (seller_id);
 
+-- ── conversations ────────────────────────────────────────
+-- live buyer <> closer chat sessions; durable so refreshes and serverless
+-- cold starts never lose a negotiation
+create table if not exists conversations (
+  id                  uuid primary key default gen_random_uuid(),
+  seller_id           uuid not null references sellers(id) on delete cascade,
+  visitor_type        text not null default 'human',   -- human | agent
+  status              text not null default 'active',  -- active | negotiating | payment_pending | completed | abandoned
+  messages            jsonb not null default '[]',
+  agreed_price        numeric,
+  agreed_scope        text,
+  croo_negotiation_id text,
+  croo_order_id       text,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+create index if not exists conversations_seller_idx on conversations (seller_id);
+
 -- ── withdrawals ──────────────────────────────────────────
 -- seller payout requests / executions against their balance
 create table if not exists withdrawals (

@@ -37,19 +37,55 @@ export default function ChatWindow({
   const [status, setStatus] = useState<string>("active");
   const [paying, setPaying] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const storageKey = `deskon:chat:${slug}`;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Greet — then, if this browser already has a conversation with this
+  // closer, resume it from the server (survives refresh and cold starts).
   useEffect(() => {
-    setMessages([
-      {
-        role: "assistant",
-        content: `I'm the closer for **${sellerName}**. I handle the inquiry, scope the work, and settle payment — so ${sellerName} can stay on the work.\n\nWhat are you after?`,
-      },
-    ]);
-  }, [sellerName]);
+    const greeting: Message = {
+      role: "assistant",
+      content: `I'm the closer for **${sellerName}**. I handle the inquiry, scope the work, and settle payment — so ${sellerName} can stay on the work.\n\nWhat are you after?`,
+    };
+    setMessages([greeting]);
+
+    let saved: string | null = null;
+    try {
+      saved = sessionStorage.getItem(storageKey);
+    } catch {
+      /* storage disabled */
+    }
+    if (!saved) return;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/chat?conversationId=${encodeURIComponent(saved)}`
+        );
+        if (!res.ok) {
+          sessionStorage.removeItem(storageKey);
+          return;
+        }
+        const data = await res.json();
+        setConversationId(data.conversationId);
+        setStatus(data.status);
+        setMessages([
+          greeting,
+          ...data.messages.map((m: any) => ({
+            role: m.role,
+            content: m.content,
+            metadata: m.metadata,
+          })),
+        ]);
+      } catch {
+        /* resume is best-effort */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellerName, slug]);
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -78,6 +114,11 @@ export default function ChatWindow({
 
       setConversationId(data.conversationId);
       setStatus(data.status);
+      try {
+        sessionStorage.setItem(storageKey, data.conversationId);
+      } catch {
+        /* storage disabled — chat still works, just won't survive refresh */
+      }
       setMessages((prev) => [
         ...prev,
         {

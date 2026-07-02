@@ -14,6 +14,7 @@
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 
+import { createServer } from "http";
 import { AgentClient, DeliverableType, EventType } from "@croo-network/sdk";
 
 const HEARTBEAT_MS = 5 * 60 * 1000;
@@ -116,6 +117,17 @@ async function run(): Promise<void> {
     await new Promise((r) => setTimeout(r, backoffMs));
     backoffMs = Math.min(backoffMs * 2, BACKOFF_MAX_MS);
   }
+}
+
+// Health endpoint — lets Render (or any host) probe the worker, and gives
+// an uptime pinger something to hit so free tiers don't idle it out.
+if (process.env.PORT) {
+  createServer((_req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("deskon-relay alive\n");
+  }).listen(Number(process.env.PORT), () => {
+    console.log(`[relay] health endpoint on :${process.env.PORT}`);
+  });
 }
 
 // Heartbeat so the host's log view shows the worker is alive.

@@ -1,0 +1,19 @@
+# Deskon Relay worker on Render.
+# Free web-service tier works but idles after ~15 min without traffic —
+# point an external pinger (cron-job.org / UptimeRobot) at / every 10 min,
+# or upgrade the service to a paid Background Worker and remove the pinger.
+services:
+  - type: web
+    name: deskon-relay
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run relay
+    healthCheckPath: /
+    envVars:
+      - key: CROO_SDK_KEY
+        sync: false
+      - key: CROO_API_URL
+        value: https://api.croo.network
+      - key: CROO_WS_URL
+        value: wss://api.croo.network/ws

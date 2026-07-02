@@ -20,6 +20,11 @@ function db(): SupabaseClient {
   return client;
 }
 
+/** Shared server-side client for other data modules (store.ts). */
+export function dbClient(): SupabaseClient {
+  return db();
+}
+
 // ── row → domain mappers ────────────────────────────────
 
 function toSeller(r: any): SellerProfile {
