@@ -103,6 +103,15 @@ export async function getSellerByWallet(
   return data ? toSeller(data) : null;
 }
 
+export async function listSellers(limit = 50): Promise<SellerProfile[]> {
+  const { data } = await db()
+    .from("sellers")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map(toSeller);
+}
+
 export async function getSellerByEmail(
   email: string
 ): Promise<SellerProfile | null> {

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "relay": "tsx scripts/provider-worker.ts"
+    "relay": "tsx scripts/provider-worker.ts",
+    "agent-buyer": "tsx scripts/agent-buyer.ts"
   },
   "dependencies": {
     "@croo-network/sdk": "^0.2.1",
