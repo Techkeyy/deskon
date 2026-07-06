@@ -7,6 +7,10 @@ export interface SellerProfile {
   payoutWallet: string | null;
   /** Google email linked at setup — convenience dashboard login. Payout still routes to the wallet. */
   authEmail: string | null;
+  /** Where deal-closed notifications go. Defaults to authEmail. */
+  notifyEmail: string | null;
+  /** Shown to the buyer right after payment ("send your footage to …"). */
+  deliveryInstructions: string | null;
   services: SellerService[];
   /** CROO service deals settle through. Path B: the Deskon-managed shared service. */
   crooServiceId: string | null;

@@ -10,6 +10,8 @@ create table if not exists sellers (
   persona_prompt  text not null default '',
   payout_wallet   text,                 -- lowercased 0x… ; null until the seller connects
   auth_email      text,                 -- lowercased Google email ; convenience dashboard login (payout still = wallet)
+  notify_email    text,                 -- where deal-closed notifications go (defaults to auth_email)
+  delivery_instructions text,           -- shown to the buyer after payment ("send footage to …")
   services        jsonb not null default '[]',
   croo_service_id text,                 -- CROO service deals settle through (Path B: Deskon-managed)
   created_at      timestamptz not null default now()
@@ -17,8 +19,10 @@ create table if not exists sellers (
 create index if not exists sellers_wallet_idx on sellers (lower(payout_wallet));
 create index if not exists sellers_email_idx on sellers (lower(auth_email));
 
--- If the table already exists from an earlier run, add the column:
+-- If the table already exists from an earlier run, add the columns:
 alter table sellers add column if not exists auth_email text;
+alter table sellers add column if not exists notify_email text;
+alter table sellers add column if not exists delivery_instructions text;
 
 -- ── orders ───────────────────────────────────────────────
 -- every closed deal, attributed to the seller who earned it

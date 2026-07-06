@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
         services: result.finalized.services,
         payoutWallet,
         authEmail: typeof authEmail === "string" ? authEmail : null,
+        notifyEmail: result.finalized.notifyEmail,
+        deliveryInstructions: result.finalized.deliveryInstructions,
       });
 
       return NextResponse.json({

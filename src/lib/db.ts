@@ -35,6 +35,8 @@ function toSeller(r: any): SellerProfile {
     personaPrompt: r.persona_prompt ?? "",
     payoutWallet: r.payout_wallet ?? null,
     authEmail: r.auth_email ?? null,
+    notifyEmail: r.notify_email ?? null,
+    deliveryInstructions: r.delivery_instructions ?? null,
     services: (r.services as SellerService[]) ?? [],
     crooServiceId: r.croo_service_id ?? null,
     createdAt: r.created_at,
@@ -147,6 +149,8 @@ export async function createSeller(input: {
   personaPrompt?: string;
   payoutWallet?: string | null;
   authEmail?: string | null;
+  notifyEmail?: string | null;
+  deliveryInstructions?: string | null;
   services?: SellerService[];
   crooServiceId?: string | null;
 }): Promise<SellerProfile> {
@@ -158,6 +162,9 @@ export async function createSeller(input: {
       persona_prompt: input.personaPrompt ?? "",
       payout_wallet: input.payoutWallet?.toLowerCase() ?? null,
       auth_email: input.authEmail?.toLowerCase() ?? null,
+      notify_email:
+        (input.notifyEmail ?? input.authEmail)?.toLowerCase() ?? null,
+      delivery_instructions: input.deliveryInstructions ?? null,
       services: input.services ?? [],
       croo_service_id:
         input.crooServiceId ?? process.env.CROO_DEMO_SERVICE_ID ?? null,

@@ -163,11 +163,14 @@ export default function ChatWindow({
 
       if (data.ok) {
         setStatus("completed");
+        const handoff = data.deliveryInstructions
+          ? `\n\nNext step: ${data.deliveryInstructions}`
+          : ` ${sellerName} will reach out to start the work.`;
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `Payment cleared. Your order is locked in escrow on Base — ${sellerName} will reach out to start the work.`,
+            content: `Payment cleared. Your order is locked in escrow on Base.${handoff}`,
           },
         ]);
       } else {

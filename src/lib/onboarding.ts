@@ -38,6 +38,15 @@ const FINALIZE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
           type: "string",
           description: "Any boundaries, e.g. minimum budget, turnaround limits, things they won't do",
         },
+        notify_email: {
+          type: "string",
+          description: "Email where the seller wants deal-closed notifications (optional)",
+        },
+        delivery_instructions: {
+          type: "string",
+          description:
+            "What the buyer should do right after paying — where to send materials or how the seller will reach them (optional)",
+        },
       },
       required: ["display_name", "services"],
     },
@@ -50,10 +59,13 @@ Your job is to interview a new seller in a friendly, efficient way and gather ev
 1. What they do / their name or brand
 2. What services they offer and typical pricing (a range is fine)
 3. Any rules or boundaries (minimum budget, turnaround, things they won't take on)
+4. The handoff: what should a buyer do right after paying (e.g. "email your footage to studio@example.com"), and where the seller wants deal notifications sent
 
 GUIDELINES:
 - Be warm and conversational. Ask ONE focused question at a time.
 - Don't interrogate — infer sensible defaults and confirm rather than asking everything explicitly.
+- The handoff question can be one combined question; if they skip it, that's fine — leave those fields out.
+- Never use emojis or exclamation marks.
 - Once you have their name, at least one priced service, and any rules, summarize it back and ask them to confirm.
 - After they confirm, call finalize_relay with the structured data.
 - Keep messages short.
@@ -67,6 +79,8 @@ export interface OnboardingResponse {
     services: SellerService[];
     rules: string;
     personaPrompt: string;
+    notifyEmail: string | null;
+    deliveryInstructions: string | null;
   };
 }
 
@@ -105,12 +119,14 @@ export async function runOnboardingTurn(messages: ChatMessage[]): Promise<Onboar
     } Be friendly, professional, and close deals within the stated price ranges.`;
 
     return {
-      message: `🎉 Your Relay is ready! Here's a quick summary, then I'll give you your link.`,
+      message: `Your Relay is ready. Here's your link — share it anywhere.`,
       finalized: {
         displayName: args.display_name,
         services,
         rules: args.rules || "",
         personaPrompt,
+        notifyEmail: args.notify_email || null,
+        deliveryInstructions: args.delivery_instructions || null,
       },
     };
   }

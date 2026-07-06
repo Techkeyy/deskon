@@ -7,6 +7,7 @@ import {
 } from "@/lib/store";
 import { createAndPayOrder } from "@/lib/payment";
 import { hasRequesterKey } from "@/lib/croo-clients";
+import { sendDealClosedEmail } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,13 +70,35 @@ export async function POST(req: NextRequest) {
       await updateConversationStatus(conversationId, "completed", {
         crooOrderId: result.orderId,
       });
+
+      const handoff = seller.deliveryInstructions
+        ? `\n\nNext step: ${seller.deliveryInstructions}`
+        : "";
       await addMessage(conversationId, {
         role: "assistant",
         content: `Payment cleared — order ${result.orderId?.slice(
           0,
           8
-        )} is locked in escrow on Base.`,
+        )} is locked in escrow on Base.${handoff}`,
         metadata: { type: "payment_confirmed", orderId: result.orderId },
+      });
+
+      // Tell the seller a deal just closed (never blocks the payment path).
+      const notifyTo = seller.notifyEmail ?? seller.authEmail;
+      if (notifyTo) {
+        await sendDealClosedEmail({
+          to: notifyTo,
+          sellerName: seller.displayName,
+          amount: convo.agreedPrice || 0,
+          scope: convo.agreedScope ?? null,
+          orderId: result.orderId ?? null,
+          payTx: result.payTxHash ?? null,
+        });
+      }
+
+      return NextResponse.json({
+        ...result,
+        deliveryInstructions: seller.deliveryInstructions,
       });
     }
 
