@@ -55,6 +55,16 @@ export async function POST(req: NextRequest) {
 
     const result = await createAndPayOrder(crooServiceId, requirements);
 
+    // Protocol errors are not buyer language — translate the known ones.
+    if (!result.ok && result.error) {
+      if (result.error.includes("PROVIDER_NOT_ACCEPTING_ORDERS")) {
+        result.error =
+          "The seller's agent is reconnecting — give it a minute and hit Pay again.";
+      } else if (result.error.includes("insufficient")) {
+        result.error = "The payment wallet is short on USDC.";
+      }
+    }
+
     if (result.ok) {
       // Attribute the settled deal to this seller in the ledger.
       await createOrder({

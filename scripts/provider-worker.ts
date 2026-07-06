@@ -20,6 +20,11 @@ import { AgentClient, DeliverableType, EventType } from "@croo-network/sdk";
 const HEARTBEAT_MS = 5 * 60 * 1000;
 const BACKOFF_START_MS = 1_000;
 const BACKOFF_MAX_MS = 60_000;
+// Free-tier hosts can freeze the process and silently kill the CROO socket
+// while HTTP still answers ("zombie socket") — CROO then rejects orders with
+// PROVIDER_NOT_ACCEPTING_ORDERS. Refreshing the connection on a fixed cadence
+// caps how long a zombie can live.
+const REFRESH_MS = 15 * 60 * 1000;
 
 if (!process.env.CROO_SDK_KEY) {
   console.error("[relay] CROO_SDK_KEY not set — aborting.");
@@ -90,8 +95,16 @@ async function run(): Promise<void> {
 
       attachHandlers(stream);
 
-      // Hold here until the underlying socket dies, then loop to reconnect.
+      // Hold until the socket dies OR the refresh cadence fires, then loop
+      // to reconnect. The scheduled refresh guarantees a fresh presence even
+      // when a dead socket never emits close.
       await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          console.log("[relay] scheduled connection refresh");
+          resolve();
+        }, REFRESH_MS);
+        timer.unref?.();
+
         const emitter = stream as {
           on: (ev: string, fn: (...args: any[]) => void) => void;
         };
@@ -101,6 +114,7 @@ async function run(): Promise<void> {
               console.error(
                 `[relay] stream ${ev}${arg?.message ? `: ${arg.message}` : ""}`
               );
+              clearTimeout(timer);
               resolve();
             });
           } catch {
