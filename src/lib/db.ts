@@ -245,6 +245,46 @@ export async function getOrdersBySeller(sellerId: string): Promise<Order[]> {
   return (data ?? []).map(toOrder);
 }
 
+/** The order a buyer paid in a given conversation (for delivery confirmation). */
+export async function getOrderByBuyerRef(
+  buyerRef: string
+): Promise<Order | null> {
+  const { data } = await db()
+    .from("orders")
+    .select("*")
+    .eq("buyer_ref", buyerRef)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return data && data[0] ? toOrder(data[0]) : null;
+}
+
+/** Flip a paid order to completed — releases the funds to the seller. */
+export async function releaseOrder(orderId: string): Promise<Order | null> {
+  const { data } = await db()
+    .from("orders")
+    .update({ status: "completed" })
+    .eq("id", orderId)
+    .eq("status", "paid") // release exactly once, only from paid
+    .select("*")
+    .maybeSingle();
+  return data ? toOrder(data) : null;
+}
+
+/** Auto-release: paid orders older than the window complete on their own —
+ * protects sellers from buyers who never click confirm. */
+const AUTO_RELEASE_DAYS = 7;
+export async function releaseDueOrders(sellerId: string): Promise<void> {
+  const cutoff = new Date(
+    Date.now() - AUTO_RELEASE_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  await db()
+    .from("orders")
+    .update({ status: "completed" })
+    .eq("seller_id", sellerId)
+    .eq("status", "paid")
+    .lt("created_at", cutoff);
+}
+
 /** Total ledgered order volume since a timestamp — backs the daily spend cap. */
 export async function getOrderVolumeSince(sinceIso: string): Promise<number> {
   const { data } = await db()
@@ -294,6 +334,9 @@ export async function getWithdrawalsBySeller(
 export async function getSellerLedger(
   sellerId: string
 ): Promise<SellerLedger> {
+  // Lazy auto-release keeps the escrow window honest without a cron.
+  await releaseDueOrders(sellerId);
+
   const [orders, withdrawals] = await Promise.all([
     getOrdersBySeller(sellerId),
     getWithdrawalsBySeller(sellerId),

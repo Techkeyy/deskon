@@ -444,7 +444,10 @@ function JobRow({ order, first }: { order: Order; first: boolean }) {
           {order.scope || "Deal"}
         </div>
         <div className="mono" style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-          {new Date(order.createdAt).toLocaleDateString()} · {order.status}
+          {new Date(order.createdAt).toLocaleDateString()} ·{" "}
+          {order.status === "paid"
+            ? "held — releases on buyer confirmation or in 7 days"
+            : order.status}
         </div>
       </div>
       <span className="num" style={{ fontSize: 16, color: "var(--text-1)" }}>

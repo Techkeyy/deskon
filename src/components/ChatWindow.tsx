@@ -40,6 +40,8 @@ export default function ChatWindow({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("active");
   const [paying, setPaying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const storageKey = `deskon:chat:${slug}`;
 
@@ -168,7 +170,8 @@ export default function ChatWindow({
           ...prev,
           {
             role: "assistant",
-            content: `Payment cleared. Your order is locked in escrow on Base.${handoff}`,
+            content: `Payment cleared. Your order is locked in escrow on Base.${handoff}\n\nWhen the work arrives, confirm delivery below to release the funds — or they release automatically after 7 days.`,
+            metadata: { type: "payment_confirmed" },
           },
         ]);
       } else {
@@ -189,6 +192,50 @@ export default function ChatWindow({
       setPaying(false);
     }
   }
+
+  async function confirmDelivery() {
+    if (!conversationId || confirming) return;
+    setConfirming(true);
+    try {
+      const res = await fetch("/api/order/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setConfirmed(true);
+        if (!data.alreadyReleased) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content:
+                "Delivery confirmed — funds released to the seller. Pleasure doing business.",
+            },
+          ]);
+        }
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.error || "Could not confirm." },
+        ]);
+      }
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Connection error. Try again." },
+      ]);
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  // The confirm button rides on the most recent payment-confirmed message.
+  const lastConfirmIdx = messages.reduce(
+    (acc, m, i) => (m.metadata?.type === "payment_confirmed" ? i : acc),
+    -1
+  );
 
   return (
     <div
@@ -317,6 +364,21 @@ export default function ChatWindow({
                         : `Pay $${msg.metadata.amount} on Base`}
                     </button>
                   </div>
+                )}
+
+              {msg.metadata?.type === "payment_confirmed" &&
+                i === lastConfirmIdx &&
+                !confirmed && (
+                  <button
+                    className="btn btn-ghost"
+                    style={{ marginTop: 14 }}
+                    onClick={confirmDelivery}
+                    disabled={confirming}
+                  >
+                    {confirming
+                      ? "Releasing…"
+                      : "Confirm delivery — release funds"}
+                  </button>
                 )}
             </div>
           </div>

@@ -123,13 +123,15 @@ export async function POST(req: NextRequest) {
     if (result.ok) {
       // The ledger credits what actually settled on-chain (the CROO service
       // price), never the chat-negotiated figure — books must match the chain.
+      // Booked as "paid" (pending delivery): funds become withdrawable when
+      // the buyer confirms delivery or after the 7-day auto-release.
       const settled = result.settledAmount ?? convo.agreedPrice ?? 0;
       await createOrder({
         sellerId: seller.id,
         crooOrderId: result.orderId ?? null,
         amount: settled,
         scope: convo.agreedScope ?? null,
-        status: "completed",
+        status: "paid",
         payTx: result.payTxHash ?? null,
         buyerRef: conversationId,
       });
