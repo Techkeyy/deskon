@@ -91,6 +91,23 @@ export async function verifyGoogleAuth(
   return { ok: true, seller };
 }
 
+/**
+ * Extract the verified email from a Supabase (Google) access token.
+ * Used at setup so the linked email is proven, never client-claimed.
+ */
+export async function googleEmailFromToken(
+  token?: string | null
+): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const { data, error } = await supabaseAuthServer().auth.getUser(token);
+    if (error) return null;
+    return data.user?.email?.toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Resolve a seller from either credential type — Google token preferred if present. */
 export async function resolveSellerAuth(input: AuthInput): Promise<AuthResult> {
   if (input.googleToken) return verifyGoogleAuth(input.googleToken);

@@ -101,7 +101,9 @@ export default function OnboardingWindow() {
         body: JSON.stringify({
           messages: updated,
           payoutWallet: wallet,
-          authEmail: email,
+          // The server derives the linked email from the verified session
+          // token — the email string here is display-only.
+          googleToken: (await getGoogleSession())?.token ?? null,
         }),
       });
       const data = await res.json();

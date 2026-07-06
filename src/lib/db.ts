@@ -245,6 +245,15 @@ export async function getOrdersBySeller(sellerId: string): Promise<Order[]> {
   return (data ?? []).map(toOrder);
 }
 
+/** Total ledgered order volume since a timestamp — backs the daily spend cap. */
+export async function getOrderVolumeSince(sinceIso: string): Promise<number> {
+  const { data } = await db()
+    .from("orders")
+    .select("amount")
+    .gte("created_at", sinceIso);
+  return (data ?? []).reduce((sum, r: { amount: unknown }) => sum + Number(r.amount), 0);
+}
+
 // ── withdrawals ─────────────────────────────────────────
 
 export async function createWithdrawal(input: {

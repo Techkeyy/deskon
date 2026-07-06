@@ -6,6 +6,9 @@ export interface PaymentResult {
   orderId?: string;
   status?: string;
   payTxHash?: string;
+  /** What actually settled on-chain (the CROO service price) — the ledger
+   * must credit this, not the chat-negotiated figure. */
+  settledAmount?: number;
   error?: string;
   needsFunds?: boolean;
 }
@@ -42,11 +45,14 @@ export async function createAndPayOrder(
     // 3. Pay — SDK auto-handles USDC approve
     const payResult = await client.payOrder(orderId);
 
+    const settled = Number((payResult.order as { price?: unknown }).price);
+
     return {
       ok: true,
       orderId,
       status: payResult.order.status,
       payTxHash: payResult.txHash,
+      settledAmount: Number.isFinite(settled) ? settled : undefined,
     };
   } catch (err: any) {
     if (isInsufficientBalance(err)) {

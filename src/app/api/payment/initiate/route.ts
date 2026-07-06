@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSellerById, createOrder } from "@/lib/db";
+import { getSellerById, createOrder, getOrderVolumeSince } from "@/lib/db";
 import {
   getConversation,
   updateConversationStatus,
@@ -8,9 +8,28 @@ import {
 import { createAndPayOrder } from "@/lib/payment";
 import { hasRequesterKey } from "@/lib/croo-clients";
 import { sendDealClosedEmail } from "@/lib/notify";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
+
+// This endpoint spends from the Deskon Pay wallet, so it gets the full
+// guard stack: rate limit, status gate, in-flight lock, daily spend cap.
+
+// Payments currently being executed (per instance) — blocks double-clicks
+// and concurrent retries for the same conversation.
+const g = globalThis as unknown as { __deskonPaying?: Set<string> };
+const inFlight = g.__deskonPaying ?? (g.__deskonPaying = new Set());
+
+const DAILY_SPEND_CAP = Number(process.env.DESKON_DAILY_SPEND_CAP || 25);
 
 export async function POST(req: NextRequest) {
+  let lockKey: string | null = null;
   try {
+    if (!rateLimit(`pay:${clientIp(req)}`, 5, 60_000)) {
+      return NextResponse.json(
+        { ok: false, error: "Too many payment attempts — slow down." },
+        { status: 429 }
+      );
+    }
+
     const { conversationId } = await req.json();
 
     if (!conversationId) {
@@ -20,6 +39,42 @@ export async function POST(req: NextRequest) {
     const convo = await getConversation(conversationId);
     if (!convo) {
       return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    }
+
+    // Status gate: only a conversation with a closer-proposed deal is payable,
+    // and a completed one is never payable twice.
+    if (convo.status === "completed") {
+      return NextResponse.json({
+        ok: false,
+        error: "This deal is already paid.",
+      });
+    }
+    if (convo.status !== "payment_pending") {
+      return NextResponse.json({
+        ok: false,
+        error: "No agreed deal to pay yet — confirm the deal with the closer first.",
+      });
+    }
+
+    // In-flight lock: one payment per conversation at a time.
+    if (inFlight.has(conversationId)) {
+      return NextResponse.json({
+        ok: false,
+        error: "Payment already in progress for this deal.",
+      });
+    }
+    lockKey = conversationId;
+    inFlight.add(conversationId);
+
+    // Daily cap on total ledgered volume — bounds worst-case drain.
+    const utcMidnight = new Date();
+    utcMidnight.setUTCHours(0, 0, 0, 0);
+    const spentToday = await getOrderVolumeSince(utcMidnight.toISOString());
+    if (spentToday + (convo.agreedPrice || 0) > DAILY_SPEND_CAP) {
+      return NextResponse.json({
+        ok: false,
+        error: "Deskon's daily settlement cap is reached — try again tomorrow.",
+      });
     }
 
     const seller = await getSellerById(convo.sellerId);
@@ -66,11 +121,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (result.ok) {
-      // Attribute the settled deal to this seller in the ledger.
+      // The ledger credits what actually settled on-chain (the CROO service
+      // price), never the chat-negotiated figure — books must match the chain.
+      const settled = result.settledAmount ?? convo.agreedPrice ?? 0;
       await createOrder({
         sellerId: seller.id,
         crooOrderId: result.orderId ?? null,
-        amount: convo.agreedPrice || 0,
+        amount: settled,
         scope: convo.agreedScope ?? null,
         status: "completed",
         payTx: result.payTxHash ?? null,
@@ -99,7 +156,7 @@ export async function POST(req: NextRequest) {
         await sendDealClosedEmail({
           to: notifyTo,
           sellerName: seller.displayName,
-          amount: convo.agreedPrice || 0,
+          amount: settled,
           scope: convo.agreedScope ?? null,
           orderId: result.orderId ?? null,
           payTx: result.payTxHash ?? null,
@@ -116,5 +173,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("Payment error:", err);
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  } finally {
+    if (lockKey) inFlight.delete(lockKey);
   }
 }

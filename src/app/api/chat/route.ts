@@ -7,6 +7,7 @@ import {
   addMessage,
   updateConversationStatus,
 } from "@/lib/store";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 /** Resume an existing conversation (buyer refreshed the page). */
 export async function GET(req: NextRequest) {
@@ -41,6 +42,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Every message is a paid DeepSeek call — keep bots off the faucet.
+    if (!rateLimit(`chat:${clientIp(req)}`, 20, 60_000)) {
+      return NextResponse.json(
+        { error: "Too many messages — slow down for a minute." },
+        { status: 429 }
+      );
+    }
+
     const { slug, conversationId, message } = await req.json();
 
     if (!slug || !message) {

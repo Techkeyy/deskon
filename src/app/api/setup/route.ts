@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runOnboardingTurn } from "@/lib/onboarding";
 import { createSeller, generateSlug } from "@/lib/db";
+import { googleEmailFromToken } from "@/lib/auth";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { ChatMessage } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, payoutWallet, authEmail } = await req.json();
+    // Onboarding turns are paid DeepSeek calls too.
+    if (!rateLimit(`setup:${clientIp(req)}`, 12, 60_000)) {
+      return NextResponse.json(
+        { error: "Too many messages — slow down for a minute." },
+        { status: 429 }
+      );
+    }
+
+    const { messages, payoutWallet, googleToken } = await req.json();
 
     if (!Array.isArray(messages)) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
@@ -31,6 +41,10 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // The linked email comes from the verified Google session, never from
+      // a client-claimed string.
+      const authEmail = await googleEmailFromToken(googleToken);
+
       const slug = await generateSlug(result.finalized.displayName);
       const seller = await createSeller({
         slug,
@@ -38,7 +52,7 @@ export async function POST(req: NextRequest) {
         personaPrompt: result.finalized.personaPrompt,
         services: result.finalized.services,
         payoutWallet,
-        authEmail: typeof authEmail === "string" ? authEmail : null,
+        authEmail,
         notifyEmail: result.finalized.notifyEmail,
         deliveryInstructions: result.finalized.deliveryInstructions,
       });
