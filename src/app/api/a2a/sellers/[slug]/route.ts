@@ -30,6 +30,10 @@ export async function GET(
         protocol: "CROO Agent Protocol (CAP)",
         network: "Base mainnet",
         currency: "USDC",
+        // Deals settle through Deskon's provider agent — also hireable
+        // natively in the CROO agent store.
+        crooStore:
+          "https://agent.croo.network/agents/517d961f-81b9-4735-b843-65f4515937a6",
       },
       services: seller.services.map((s) => ({
         name: s.name,

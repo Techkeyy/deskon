@@ -21,6 +21,9 @@ export async function GET(req: NextRequest) {
         currency: "USDC",
         flow: ["negotiate", "lock (escrow)", "deliver", "clear"],
       },
+      // Also hireable natively in the CROO agent store.
+      crooStore:
+        "https://agent.croo.network/agents/517d961f-81b9-4735-b843-65f4515937a6",
       capabilities: {
         negotiation: true,
         onchainSettlement: true,

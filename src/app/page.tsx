@@ -6,6 +6,9 @@ const REPO = "https://github.com/Techkeyy/deskon";
 const PAY_TX =
   "0x7a7d5175390d0600f5579862f1bf70afb9aed0495b29ffdbcb99c40e74ac409a";
 const BASESCAN = `https://basescan.org/tx/${PAY_TX}`;
+// Deskon Relay is also natively hireable in the CROO agent store.
+const CROO_STORE =
+  "https://agent.croo.network/agents/517d961f-81b9-4735-b843-65f4515937a6";
 
 const TAPE_ITEMS = [
   "Order 26489c6e",
@@ -340,15 +343,33 @@ export default function Home() {
                 <SlipRow label="Pay tx">7a7d5175…74ac409a</SlipRow>
               </div>
 
-              <a
-                href={BASESCAN}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-ghost"
-                style={{ marginTop: 26 }}
+              <div
+                style={{
+                  marginTop: 26,
+                  display: "flex",
+                  gap: 14,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
               >
-                View on BaseScan →
-              </a>
+                <a
+                  href={BASESCAN}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-ghost"
+                >
+                  View on BaseScan →
+                </a>
+                <a
+                  href={CROO_STORE}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="navlink"
+                  style={{ color: "var(--text-3)" }}
+                >
+                  Or hire the agent on the CROO store →
+                </a>
+              </div>
             </div>
           </div>
         </section>
@@ -420,6 +441,9 @@ export default function Home() {
           </a>
           <a href={BASESCAN} target="_blank" rel="noreferrer" className="navlink">
             On-chain proof
+          </a>
+          <a href={CROO_STORE} target="_blank" rel="noreferrer" className="navlink">
+            CROO store
           </a>
         </div>
       </footer>
