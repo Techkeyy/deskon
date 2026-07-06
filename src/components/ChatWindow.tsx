@@ -30,7 +30,11 @@ export default function ChatWindow({
   slug: string;
   sellerName: string;
 }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const greeting: Message = {
+    role: "assistant",
+    content: `I'm the closer for **${sellerName}**. I handle the inquiry, scope the work, and settle payment — so ${sellerName} can stay on the work.\n\nWhat are you after?`,
+  };
+  const [messages, setMessages] = useState<Message[]>([greeting]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -43,15 +47,9 @@ export default function ChatWindow({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Greet — then, if this browser already has a conversation with this
-  // closer, resume it from the server (survives refresh and cold starts).
+  // If this browser already has a conversation with this closer, resume it
+  // from the server (survives refresh and cold starts).
   useEffect(() => {
-    const greeting: Message = {
-      role: "assistant",
-      content: `I'm the closer for **${sellerName}**. I handle the inquiry, scope the work, and settle payment — so ${sellerName} can stay on the work.\n\nWhat are you after?`,
-    };
-    setMessages([greeting]);
-
     let saved: string | null = null;
     try {
       saved = sessionStorage.getItem(storageKey);
@@ -149,7 +147,7 @@ export default function ChatWindow({
     }
   }
 
-  async function handlePay(amount: number) {
+  async function handlePay() {
     if (!conversationId || paying) return;
     setPaying(true);
 
@@ -309,7 +307,7 @@ export default function ChatWindow({
                     <button
                       className="btn btn-primary"
                       style={{ width: "100%", justifyContent: "center" }}
-                      onClick={() => handlePay(msg.metadata!.amount!)}
+                      onClick={() => handlePay()}
                       disabled={paying || status === "completed"}
                     >
                       {paying

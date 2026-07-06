@@ -136,7 +136,6 @@ export async function generateSlug(displayName: string): Promise<string> {
       .slice(0, 30) || "relay";
   let slug = base;
   let n = 1;
-  // eslint-disable-next-line no-await-in-loop
   while (await getSellerBySlug(slug)) {
     slug = `${base}-${n++}`;
   }

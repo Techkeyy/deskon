@@ -49,22 +49,23 @@ export default function OnboardingWindow() {
   }, [messages, relayLink, loading]);
 
   // On mount: restore any draft saved before a Google redirect, then adopt the
-  // Google email if the browser now has a session.
+  // Google email if the browser now has a session. All state updates happen
+  // asynchronously to avoid cascading renders during mount.
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const draft = JSON.parse(raw);
-        if (Array.isArray(draft.messages) && draft.messages.length > 1) {
-          setMessages(draft.messages);
-        }
-        if (draft.wallet) setWallet(draft.wallet);
-      }
-    } catch {
-      /* ignore malformed draft */
-    }
     (async () => {
       const g = await getGoogleSession();
+      try {
+        const raw = sessionStorage.getItem(DRAFT_KEY);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (Array.isArray(draft.messages) && draft.messages.length > 1) {
+            setMessages(draft.messages);
+          }
+          if (draft.wallet) setWallet(draft.wallet);
+        }
+      } catch {
+        /* ignore malformed draft */
+      }
       if (g) setEmail(g.email);
       setRestored(true);
     })();

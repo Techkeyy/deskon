@@ -1,5 +1,6 @@
-// Throwaway: check funding-order statuses from each buyer's provider side,
-// and deliver any paid-but-undelivered order.
+// Ops utility: check campaign-order statuses from each buyer agent's
+// provider side, and deliver any paid-but-undelivered order.
+// Usage: npx tsx scripts/check-orders.ts
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 import { readFileSync } from "fs";
