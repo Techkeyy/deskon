@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSellerAuth } from "@/lib/auth";
-import { getSellerLedger, createWithdrawal } from "@/lib/db";
+import {
+  getSellerLedger,
+  createWithdrawal,
+  updateWithdrawal,
+  getPayoutVolumeSince,
+} from "@/lib/db";
+import { treasuryConfigured, sendUsdc } from "@/lib/treasury";
+
+const DAILY_PAYOUT_CAP = Number(process.env.DESKON_DAILY_PAYOUT_CAP || 50);
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,6 +45,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Daily payout cap — bounds worst-case treasury drain.
+    const utcMidnight = new Date();
+    utcMidnight.setUTCHours(0, 0, 0, 0);
+    const paidToday = await getPayoutVolumeSince(utcMidnight.toISOString());
+    if (paidToday + amt > DAILY_PAYOUT_CAP) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Daily payout cap reached — try again tomorrow.",
+        },
+        { status: 429 }
+      );
+    }
+
     const withdrawal = await createWithdrawal({
       sellerId: auth.seller.id,
       amount: amt,
@@ -44,7 +66,32 @@ export async function POST(req: NextRequest) {
       status: "requested",
     });
 
-    return NextResponse.json({ ok: true, withdrawal });
+    // Execute on-chain if the treasury is configured; otherwise the request
+    // stays queued for manual payout.
+    if (!treasuryConfigured()) {
+      return NextResponse.json({
+        ok: true,
+        withdrawal,
+        note: "Payout request recorded — processed manually while the treasury is offline.",
+      });
+    }
+
+    const payout = await sendUsdc(auth.seller.payoutWallet, amt);
+    if (!payout.ok) {
+      // Mark failed so the amount returns to the seller's available balance.
+      await updateWithdrawal(withdrawal.id, { status: "failed" });
+      return NextResponse.json(
+        { ok: false, error: payout.error || "Payout failed — balance restored." },
+        { status: 502 }
+      );
+    }
+
+    const sent = await updateWithdrawal(withdrawal.id, {
+      status: "sent",
+      tx: payout.tx,
+    });
+
+    return NextResponse.json({ ok: true, withdrawal: sent ?? withdrawal, tx: payout.tx });
   } catch (err: any) {
     console.error("Withdraw error:", err);
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });

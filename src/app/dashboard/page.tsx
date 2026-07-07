@@ -470,6 +470,20 @@ function WithdrawalRow({ w, first }: { w: Withdrawal; first: boolean }) {
     >
       <div className="mono" style={{ fontSize: 12, color: "var(--text-3)" }}>
         {new Date(w.createdAt).toLocaleDateString()} · {w.status}
+        {w.tx && (
+          <>
+            {" · "}
+            <a
+              href={`https://basescan.org/tx/${w.tx}`}
+              target="_blank"
+              rel="noreferrer"
+              className="navlink"
+              style={{ color: "var(--accent-soft)", fontSize: 11 }}
+            >
+              tx →
+            </a>
+          </>
+        )}
       </div>
       <span className="num" style={{ fontSize: 15, color: "var(--text-2)" }}>
         −${w.amount}

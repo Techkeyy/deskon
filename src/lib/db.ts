@@ -318,6 +318,29 @@ export async function createWithdrawal(input: {
   return toWithdrawal(data);
 }
 
+export async function updateWithdrawal(
+  id: string,
+  updates: { status: Withdrawal["status"]; tx?: string | null }
+): Promise<Withdrawal | null> {
+  const { data } = await db()
+    .from("withdrawals")
+    .update({ status: updates.status, tx: updates.tx ?? null })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  return data ? toWithdrawal(data) : null;
+}
+
+/** Total non-failed payout volume since a timestamp — backs the daily payout cap. */
+export async function getPayoutVolumeSince(sinceIso: string): Promise<number> {
+  const { data } = await db()
+    .from("withdrawals")
+    .select("amount, status")
+    .gte("created_at", sinceIso)
+    .neq("status", "failed");
+  return (data ?? []).reduce((sum, r: { amount: unknown }) => sum + Number(r.amount), 0);
+}
+
 export async function getWithdrawalsBySeller(
   sellerId: string
 ): Promise<Withdrawal[]> {

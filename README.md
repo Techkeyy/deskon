@@ -112,13 +112,15 @@ npm run relay                # provider worker (separate terminal)
 | `SUPABASE_URL` / `SUPABASE_SECRET_KEY` | server-side database access |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser-side (Google OAuth only) |
 | `RESEND_API_KEY` | seller notifications (optional — no-ops without it) |
+| `TREASURY_PRIVATE_KEY` | payout treasury key (optional — withdrawals queue as requests without it) |
+| `DESKON_DAILY_SPEND_CAP` / `DESKON_DAILY_PAYOUT_CAP` | daily settlement / payout caps in USD (default 25 / 50) |
 
 Database schema: run `supabase/schema.sql` in the Supabase SQL editor.
 
 ## Honest limitations
 
 - **Buyer custody (demo):** payments execute from Deskon's requester agent, not the buyer's own wallet. Real-world v2 is buyer-side wallets (or CAP's buyer flow) — the negotiation and settlement rails don't change.
-- **Withdrawals are requests:** the dashboard records payout requests; on-chain treasury payout is not wired yet.
+- **Custodial escrow window:** after on-chain settlement, Deskon holds funds until the buyer confirms delivery (or 7-day auto-release), then pays out on-chain from a treasury wallet. Non-custodial per-seller agents are the roadmap.
 - **Email is sandboxed:** without a verified domain, Resend only delivers to the account owner. One DNS record fixes it.
 - **Fixed-price CROO services:** CAP prices are set per service definition; the closer negotiates scope within the seller's bounds and settles at the service price.
 - **Render free tier idles:** the worker needs an uptime pinger (any 10-min cron on `/`) or a paid background worker.
