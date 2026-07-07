@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSellerById, createOrder, getOrderVolumeSince } from "@/lib/db";
+import {
+  getSellerById,
+  createOrder,
+  getOrderVolumeSince,
+  depositTxUsed,
+} from "@/lib/db";
+import { verifyUsdcDeposit } from "@/lib/deposits";
 import {
   getConversation,
   updateConversationStatus,
@@ -30,7 +36,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { conversationId } = await req.json();
+    const { conversationId, depositTx } = await req.json();
 
     if (!conversationId) {
       return NextResponse.json({ error: "conversationId required" }, { status: 400 });
@@ -66,15 +72,33 @@ export async function POST(req: NextRequest) {
     lockKey = conversationId;
     inFlight.add(conversationId);
 
-    // Daily cap on total ledgered volume — bounds worst-case drain.
-    const utcMidnight = new Date();
-    utcMidnight.setUTCHours(0, 0, 0, 0);
-    const spentToday = await getOrderVolumeSince(utcMidnight.toISOString());
-    if (spentToday + (convo.agreedPrice || 0) > DAILY_SPEND_CAP) {
-      return NextResponse.json({
-        ok: false,
-        error: "Deskon's daily settlement cap is reached — try again tomorrow.",
-      });
+    // Buyer-custody path: verify the buyer's on-chain USDC deposit before
+    // settling. The deposit must cover the agreed price and be unused.
+    let verifiedDeposit: { amount: number; tx: string } | null = null;
+    if (depositTx) {
+      if (await depositTxUsed(depositTx)) {
+        return NextResponse.json({
+          ok: false,
+          error: "That deposit already funded an order.",
+        });
+      }
+      const check = await verifyUsdcDeposit(depositTx, convo.agreedPrice || 0);
+      if (!check.ok) {
+        return NextResponse.json({ ok: false, error: check.error });
+      }
+      verifiedDeposit = { amount: check.amount!, tx: depositTx };
+    } else {
+      // Sponsored (demo) path spends Deskon's wallet — the daily cap bounds
+      // worst-case drain. Deposit-funded deals bring their own money.
+      const utcMidnight = new Date();
+      utcMidnight.setUTCHours(0, 0, 0, 0);
+      const spentToday = await getOrderVolumeSince(utcMidnight.toISOString());
+      if (spentToday + (convo.agreedPrice || 0) > DAILY_SPEND_CAP) {
+        return NextResponse.json({
+          ok: false,
+          error: "Deskon's daily settlement cap is reached — try again tomorrow.",
+        });
+      }
     }
 
     const seller = await getSellerById(convo.sellerId);
@@ -121,11 +145,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (result.ok) {
-      // The ledger credits what actually settled on-chain (the CROO service
-      // price), never the chat-negotiated figure — books must match the chain.
-      // Booked as "paid" (pending delivery): funds become withdrawable when
-      // the buyer confirms delivery or after the 7-day auto-release.
-      const settled = result.settledAmount ?? convo.agreedPrice ?? 0;
+      // The ledger credits real money: the buyer's verified deposit when they
+      // paid with their own wallet, else what settled on-chain via CROO —
+      // never an unbacked chat-negotiated figure. Booked as "paid" (pending
+      // delivery): withdrawable after buyer confirmation or 7-day auto-release.
+      const settled = verifiedDeposit
+        ? verifiedDeposit.amount
+        : result.settledAmount ?? convo.agreedPrice ?? 0;
       await createOrder({
         sellerId: seller.id,
         crooOrderId: result.orderId ?? null,
@@ -133,6 +159,7 @@ export async function POST(req: NextRequest) {
         scope: convo.agreedScope ?? null,
         status: "paid",
         payTx: result.payTxHash ?? null,
+        depositTx: verifiedDeposit?.tx ?? null,
         buyerRef: conversationId,
       });
 

@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { payUsdc } from "@/lib/wallet";
+
+// Where buyer-custody USDC deposits land (the Deskon treasury).
+const DEPOSIT_ADDRESS = process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS;
 
 interface Message {
   role: "user" | "assistant";
@@ -40,6 +44,9 @@ export default function ChatWindow({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("active");
   const [paying, setPaying] = useState(false);
+  const [payStage, setPayStage] = useState<
+    "wallet" | "verifying" | "sponsored" | null
+  >(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -149,40 +156,76 @@ export default function ChatWindow({
     }
   }
 
+  /** Settle the deal via the API — with a verified buyer deposit or sponsored. */
+  async function settle(depositTx?: string) {
+    const res = await fetch("/api/payment/initiate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, depositTx }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      setStatus("completed");
+      const handoff = data.deliveryInstructions
+        ? `\n\nNext step: ${data.deliveryInstructions}`
+        : ` ${sellerName} will reach out to start the work.`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Payment cleared. Your order is locked in escrow on Base.${handoff}\n\nWhen the work arrives, confirm delivery below to release the funds — or they release automatically after 7 days.`,
+          metadata: { type: "payment_confirmed" },
+        },
+      ]);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.error || "Payment could not be completed.",
+        },
+      ]);
+    }
+  }
+
+  /** Buyer-custody path: buyer sends USDC from their own wallet first. */
+  async function handleWalletPay(amount: number) {
+    if (!conversationId || paying) return;
+    if (!DEPOSIT_ADDRESS) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Wallet payments aren't configured — use demo pay." },
+      ]);
+      return;
+    }
+    setPaying(true);
+    setPayStage("wallet");
+    try {
+      const tx = await payUsdc(DEPOSIT_ADDRESS, amount);
+      setPayStage("verifying");
+      await settle(tx);
+    } catch (e: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: e?.message || "Wallet payment was cancelled.",
+        },
+      ]);
+    } finally {
+      setPaying(false);
+      setPayStage(null);
+    }
+  }
+
+  /** Sponsored (demo) path: Deskon's requester wallet fronts the payment. */
   async function handlePay() {
     if (!conversationId || paying) return;
     setPaying(true);
-
+    setPayStage("sponsored");
     try {
-      const res = await fetch("/api/payment/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId }),
-      });
-      const data = await res.json();
-
-      if (data.ok) {
-        setStatus("completed");
-        const handoff = data.deliveryInstructions
-          ? `\n\nNext step: ${data.deliveryInstructions}`
-          : ` ${sellerName} will reach out to start the work.`;
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: `Payment cleared. Your order is locked in escrow on Base.${handoff}\n\nWhen the work arrives, confirm delivery below to release the funds — or they release automatically after 7 days.`,
-            metadata: { type: "payment_confirmed" },
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: data.error || "Payment could not be completed.",
-          },
-        ]);
-      }
+      await settle();
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -190,6 +233,7 @@ export default function ChatWindow({
       ]);
     } finally {
       setPaying(false);
+      setPayStage(null);
     }
   }
 
@@ -354,14 +398,30 @@ export default function ChatWindow({
                     <button
                       className="btn btn-primary"
                       style={{ width: "100%", justifyContent: "center" }}
+                      onClick={() => handleWalletPay(msg.metadata!.amount!)}
+                      disabled={paying || status === "completed"}
+                    >
+                      {payStage === "wallet"
+                        ? "Confirm in your wallet…"
+                        : payStage === "verifying"
+                        ? "Verifying deposit on Base…"
+                        : status === "completed"
+                        ? "Paid ✓"
+                        : `Pay $${msg.metadata.amount} from your wallet`}
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      style={{
+                        width: "100%",
+                        justifyContent: "center",
+                        marginTop: 8,
+                      }}
                       onClick={() => handlePay()}
                       disabled={paying || status === "completed"}
                     >
-                      {paying
+                      {payStage === "sponsored"
                         ? "Settling on Base…"
-                        : status === "completed"
-                        ? "Paid ✓"
-                        : `Pay $${msg.metadata.amount} on Base`}
+                        : "Demo pay (sponsored)"}
                     </button>
                   </div>
                 )}

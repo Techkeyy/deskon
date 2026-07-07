@@ -53,6 +53,7 @@ function toOrder(r: any): Order {
     scope: r.scope ?? null,
     status: r.status,
     payTx: r.pay_tx ?? null,
+    depositTx: r.deposit_tx ?? null,
     buyerRef: r.buyer_ref ?? null,
     createdAt: r.created_at,
   };
@@ -216,24 +217,40 @@ export async function createOrder(input: {
   scope?: string | null;
   status?: Order["status"];
   payTx?: string | null;
+  depositTx?: string | null;
   buyerRef?: string | null;
 }): Promise<Order> {
+  const row: Record<string, unknown> = {
+    seller_id: input.sellerId,
+    croo_order_id: input.crooOrderId ?? null,
+    amount: input.amount,
+    currency: input.currency ?? "USDC",
+    scope: input.scope ?? null,
+    status: input.status ?? "completed",
+    pay_tx: input.payTx ?? null,
+    buyer_ref: input.buyerRef ?? null,
+  };
+  // Only included when present so sponsored-path inserts don't depend on
+  // the deposit_tx migration having run.
+  if (input.depositTx) row.deposit_tx = input.depositTx;
+
   const { data, error } = await db()
     .from("orders")
-    .insert({
-      seller_id: input.sellerId,
-      croo_order_id: input.crooOrderId ?? null,
-      amount: input.amount,
-      currency: input.currency ?? "USDC",
-      scope: input.scope ?? null,
-      status: input.status ?? "completed",
-      pay_tx: input.payTx ?? null,
-      buyer_ref: input.buyerRef ?? null,
-    })
+    .insert(row)
     .select("*")
     .single();
   if (error) throw new Error(`createOrder: ${error.message}`);
   return toOrder(data);
+}
+
+/** True if a deposit tx already funded an order (anti-replay, pre-insert check). */
+export async function depositTxUsed(txHash: string): Promise<boolean> {
+  const { data } = await db()
+    .from("orders")
+    .select("id")
+    .eq("deposit_tx", txHash)
+    .limit(1);
+  return !!data?.length;
 }
 
 export async function getOrdersBySeller(sellerId: string): Promise<Order[]> {

@@ -35,6 +35,8 @@ export interface Order {
   scope: string | null;
   status: "pending" | "paid" | "completed" | "withdrawn";
   payTx: string | null;
+  /** Buyer's on-chain USDC deposit tx (buyer-custody path; null = sponsored demo). */
+  depositTx: string | null;
   buyerRef: string | null;
   createdAt: string;
 }

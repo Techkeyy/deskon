@@ -35,10 +35,16 @@ create table if not exists orders (
   scope         text,
   status        text not null default 'pending',  -- pending | paid | completed | withdrawn
   pay_tx        text,
+  deposit_tx    text,                             -- buyer's on-chain USDC deposit (buyer-custody path)
   buyer_ref     text,
   created_at    timestamptz not null default now()
 );
 create index if not exists orders_seller_idx on orders (seller_id);
+-- a deposit tx funds exactly one order (anti-replay)
+create unique index if not exists orders_deposit_tx_uniq on orders (deposit_tx) where deposit_tx is not null;
+
+-- If the table already exists from an earlier run:
+alter table orders add column if not exists deposit_tx text;
 
 -- ── conversations ────────────────────────────────────────
 -- live buyer <> closer chat sessions; durable so refreshes and serverless
