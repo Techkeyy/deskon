@@ -67,6 +67,10 @@ function attachHandlers(stream: any) {
           price: order.price,
           message:
             "Deal confirmed via Deskon Relay. The seller will follow up to begin the work.",
+          nextSteps:
+            "Deskon closers negotiate custom scope and pricing in chat. Talk to this seller's closer (or browse all closers) at the URL below — include your order id when you reach out.",
+          url: "https://deskon-delta.vercel.app",
+          a2a: "https://deskon-delta.vercel.app/.well-known/agent.json",
           closedAt: new Date().toISOString(),
         }),
       });
