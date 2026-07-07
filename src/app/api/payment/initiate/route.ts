@@ -13,7 +13,7 @@ import {
 } from "@/lib/store";
 import { createAndPayOrder } from "@/lib/payment";
 import { hasRequesterKey } from "@/lib/croo-clients";
-import { sendDealClosedEmail } from "@/lib/notify";
+import { sendDealClosedEmail, sendBuyerReceiptEmail } from "@/lib/notify";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 // This endpoint spends from the Deskon Pay wallet, so it gets the full
@@ -36,11 +36,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { conversationId, depositTx } = await req.json();
+    const { conversationId, depositTx, buyerContact } = await req.json();
 
     if (!conversationId) {
       return NextResponse.json({ error: "conversationId required" }, { status: 400 });
     }
+
+    const contact =
+      typeof buyerContact === "string" && /.+@.+\..+/.test(buyerContact)
+        ? buyerContact.trim().toLowerCase()
+        : null;
 
     const convo = await getConversation(conversationId);
     if (!convo) {
@@ -163,6 +168,7 @@ export async function POST(req: NextRequest) {
         payTx: result.payTxHash ?? null,
         depositTx: verifiedDeposit?.tx ?? null,
         buyerRef: conversationId,
+        buyerContact: contact,
       });
 
       await updateConversationStatus(conversationId, "completed", {
@@ -181,7 +187,8 @@ export async function POST(req: NextRequest) {
         metadata: { type: "payment_confirmed", orderId: result.orderId },
       });
 
-      // Tell the seller a deal just closed (never blocks the payment path).
+      // Notifications never block the payment path.
+      // Seller: a deal closed + where to deliver.
       const notifyTo = seller.notifyEmail ?? seller.authEmail;
       if (notifyTo) {
         await sendDealClosedEmail({
@@ -191,12 +198,26 @@ export async function POST(req: NextRequest) {
           scope: convo.agreedScope ?? null,
           orderId: result.orderId ?? null,
           payTx: result.payTxHash ?? null,
+          buyerContact: contact,
+        });
+      }
+
+      // Buyer: receipt + a device-independent tracking link.
+      const trackUrl = `${req.nextUrl.origin}/chat/${seller.slug}?c=${conversationId}`;
+      if (contact) {
+        await sendBuyerReceiptEmail({
+          to: contact,
+          sellerName: seller.displayName,
+          amount: settled,
+          scope: convo.agreedScope ?? null,
+          trackUrl,
         });
       }
 
       return NextResponse.json({
         ...result,
         deliveryInstructions: seller.deliveryInstructions,
+        trackUrl,
       });
     }
 

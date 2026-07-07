@@ -38,6 +38,8 @@ export interface Order {
   /** Buyer's on-chain USDC deposit tx (buyer-custody path; null = sponsored demo). */
   depositTx: string | null;
   buyerRef: string | null;
+  /** Buyer's email — where the seller delivers, and the buyer's tracking receipt. */
+  buyerContact: string | null;
   createdAt: string;
 }
 

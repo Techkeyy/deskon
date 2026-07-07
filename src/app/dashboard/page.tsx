@@ -449,6 +449,11 @@ function JobRow({ order, first }: { order: Order; first: boolean }) {
             ? "held — releases on buyer confirmation or in 7 days"
             : order.status}
         </div>
+        {order.buyerContact && (
+          <div className="mono" style={{ fontSize: 11, color: "var(--accent-soft)", marginTop: 2 }}>
+            deliver to {order.buyerContact}
+          </div>
+        )}
       </div>
       <span className="num" style={{ fontSize: 16, color: "var(--text-1)" }}>
         ${order.amount}

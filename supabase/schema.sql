@@ -37,6 +37,7 @@ create table if not exists orders (
   pay_tx        text,
   deposit_tx    text,                             -- buyer's on-chain USDC deposit (buyer-custody path)
   buyer_ref     text,
+  buyer_contact text,                             -- buyer's email — where the seller delivers, and buyer's tracking receipt
   created_at    timestamptz not null default now()
 );
 create index if not exists orders_seller_idx on orders (seller_id);
@@ -45,6 +46,7 @@ create unique index if not exists orders_deposit_tx_uniq on orders (deposit_tx) 
 
 -- If the table already exists from an earlier run:
 alter table orders add column if not exists deposit_tx text;
+alter table orders add column if not exists buyer_contact text;
 
 -- ── conversations ────────────────────────────────────────
 -- live buyer <> closer chat sessions; durable so refreshes and serverless

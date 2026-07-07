@@ -55,6 +55,7 @@ function toOrder(r: any): Order {
     payTx: r.pay_tx ?? null,
     depositTx: r.deposit_tx ?? null,
     buyerRef: r.buyer_ref ?? null,
+    buyerContact: r.buyer_contact ?? null,
     createdAt: r.created_at,
   };
 }
@@ -219,6 +220,7 @@ export async function createOrder(input: {
   payTx?: string | null;
   depositTx?: string | null;
   buyerRef?: string | null;
+  buyerContact?: string | null;
 }): Promise<Order> {
   const row: Record<string, unknown> = {
     seller_id: input.sellerId,
@@ -230,9 +232,10 @@ export async function createOrder(input: {
     pay_tx: input.payTx ?? null,
     buyer_ref: input.buyerRef ?? null,
   };
-  // Only included when present so sponsored-path inserts don't depend on
-  // the deposit_tx migration having run.
+  // Only included when present so inserts don't depend on the newer
+  // migrations having run.
   if (input.depositTx) row.deposit_tx = input.depositTx;
+  if (input.buyerContact) row.buyer_contact = input.buyerContact;
 
   const { data, error } = await db()
     .from("orders")

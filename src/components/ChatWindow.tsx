@@ -49,6 +49,9 @@ export default function ChatWindow({
   >(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [trackUrl, setTrackUrl] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const storageKey = `deskon:chat:${slug}`;
 
@@ -56,12 +59,13 @@ export default function ChatWindow({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // If this browser already has a conversation with this closer, resume it
-  // from the server (survives refresh and cold starts).
+  // Resume an existing conversation. A ?c=<id> link (from the buyer's receipt
+  // email) works on ANY device; sessionStorage covers same-device refreshes.
   useEffect(() => {
     let saved: string | null = null;
     try {
-      saved = sessionStorage.getItem(storageKey);
+      const fromLink = new URLSearchParams(window.location.search).get("c");
+      saved = fromLink || sessionStorage.getItem(storageKey);
     } catch {
       /* storage disabled */
     }
@@ -161,20 +165,28 @@ export default function ChatWindow({
     const res = await fetch("/api/payment/initiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, depositTx }),
+      body: JSON.stringify({
+        conversationId,
+        depositTx,
+        buyerContact: buyerEmail.trim() || undefined,
+      }),
     });
     const data = await res.json();
 
     if (data.ok) {
       setStatus("completed");
+      if (data.trackUrl) setTrackUrl(data.trackUrl);
       const handoff = data.deliveryInstructions
         ? `\n\nNext step: ${data.deliveryInstructions}`
         : ` ${sellerName} will reach out to start the work.`;
+      const emailNote = buyerEmail.trim()
+        ? ` A receipt with your tracking link is on its way to ${buyerEmail.trim()}.`
+        : "";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `Payment cleared. Your order is locked in escrow on Base.${handoff}\n\nWhen the work arrives, confirm delivery below to release the funds — or they release automatically after 7 days.`,
+          content: `Payment cleared. Your order is locked in escrow on Base.${handoff}\n\nWhen the work arrives, confirm delivery below to release the funds — or they release automatically after 7 days.${emailNote}`,
           metadata: { type: "payment_confirmed" },
         },
       ]);
@@ -395,6 +407,15 @@ export default function ChatWindow({
                         </span>
                       </span>
                     </div>
+                    <input
+                      type="email"
+                      className="line-input"
+                      value={buyerEmail}
+                      onChange={(e) => setBuyerEmail(e.target.value)}
+                      placeholder="Your email (for delivery + tracking)"
+                      disabled={status === "completed"}
+                      style={{ width: "100%", marginBottom: 12, fontSize: 13.5 }}
+                    />
                     <button
                       className="btn btn-primary"
                       style={{ width: "100%", justifyContent: "center" }}
@@ -427,18 +448,61 @@ export default function ChatWindow({
                 )}
 
               {msg.metadata?.type === "payment_confirmed" &&
-                i === lastConfirmIdx &&
-                !confirmed && (
-                  <button
-                    className="btn btn-ghost"
-                    style={{ marginTop: 14 }}
-                    onClick={confirmDelivery}
-                    disabled={confirming}
-                  >
-                    {confirming
-                      ? "Releasing…"
-                      : "Confirm delivery — release funds"}
-                  </button>
+                i === lastConfirmIdx && (
+                  <div style={{ marginTop: 14 }}>
+                    {!confirmed && (
+                      <button
+                        className="btn btn-ghost"
+                        onClick={confirmDelivery}
+                        disabled={confirming}
+                      >
+                        {confirming
+                          ? "Releasing…"
+                          : "Confirm delivery — release funds"}
+                      </button>
+                    )}
+                    {trackUrl && (
+                      <div style={{ marginTop: 14 }}>
+                        <span className="eyebrow" style={{ fontSize: 9 }}>
+                          Save this link to track your order
+                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                            alignItems: "center",
+                          }}
+                        >
+                          <code
+                            className="mono"
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              fontSize: 12,
+                              color: "var(--text-2)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {trackUrl}
+                          </code>
+                          <button
+                            className="btn btn-ghost"
+                            style={{ flexShrink: 0 }}
+                            onClick={() => {
+                              navigator.clipboard.writeText(trackUrl);
+                              setLinkCopied(true);
+                              setTimeout(() => setLinkCopied(false), 2000);
+                            }}
+                          >
+                            {linkCopied ? "Copied" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
             </div>
           </div>
