@@ -45,14 +45,19 @@ export async function createAndPayOrder(
     // 3. Pay — SDK auto-handles USDC approve
     const payResult = await client.payOrder(orderId);
 
-    const settled = Number((payResult.order as { price?: unknown }).price);
+    // CROO reports order price/amount in USDC base units (6 decimals),
+    // e.g. "100000" = $0.10.
+    const o = payResult.order as { price?: unknown; amount?: unknown };
+    const rawUnits = Number(o.price ?? o.amount);
+    const settled =
+      Number.isFinite(rawUnits) && rawUnits > 0 ? rawUnits / 1e6 : undefined;
 
     return {
       ok: true,
       orderId,
       status: payResult.order.status,
       payTxHash: payResult.txHash,
-      settledAmount: Number.isFinite(settled) ? settled : undefined,
+      settledAmount: settled,
     };
   } catch (err: any) {
     if (isInsufficientBalance(err)) {

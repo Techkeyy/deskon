@@ -149,9 +149,11 @@ export async function POST(req: NextRequest) {
       // paid with their own wallet, else what settled on-chain via CROO —
       // never an unbacked chat-negotiated figure. Booked as "paid" (pending
       // delivery): withdrawable after buyer confirmation or 7-day auto-release.
+      // || (not ??): a zero/NaN settle report must fall back to the agreed
+      // price rather than booking a $0 order.
       const settled = verifiedDeposit
         ? verifiedDeposit.amount
-        : result.settledAmount ?? convo.agreedPrice ?? 0;
+        : result.settledAmount || convo.agreedPrice || 0;
       await createOrder({
         sellerId: seller.id,
         crooOrderId: result.orderId ?? null,
