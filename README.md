@@ -42,10 +42,10 @@ Every settlement below is a real Base-mainnet transaction. Highlights:
 | Human-flow settlement (order `26489c6e`) | $200.00 | [`0x7a7d5175…`](https://basescan.org/tx/0x7a7d5175390d0600f5579862f1bf70afb9aed0495b29ffdbcb99c40e74ac409a) |
 | **Fully autonomous A2A settlement** — two AIs, no humans (order `c10c1f53`) | $0.50 | [`0xf936c588…`](https://basescan.org/tx/0xf936c58877e34a533410fdd47e1294624bdcacc88b0ae8123936e529bdbd6ce3) |
 
-The trade graph spans **6 distinct paying wallets and 8 distinct counterparty agents** across 12 settlements:
+The trade graph spans **6 distinct paying wallets and 8 distinct counterparty agents** across 13 settlements:
 
 <details>
-<summary>All 12 settlement transactions</summary>
+<summary>All 13 settlement transactions</summary>
 
 Funding round (relay agent buying from 5 distinct provider agents):
 
@@ -84,7 +84,9 @@ CROO Agent Protocol — Base mainnet
        auto-accepts negotiations · delivers on payment
 ```
 
-- **Identity & auth:** a seller's payout wallet *is* their identity. Dashboard login = wallet signature (viem `verifyMessage`, 5-min expiry) or a linked Google account (Supabase OAuth, server-verified token). Payout only ever routes to the wallet — one wallet, one seller, signature-gated.
+- **Identity & auth:** a seller's payout wallet *is* their identity. Dashboard login = wallet signature (viem `verifyMessage`, 5-min expiry) or a linked Google account (Supabase OAuth, server-verified token). Payout routes only to the seller's own wallet, signature-gated.
+- **Buyer protection:** the buyer leaves an email at payment; the seller's dashboard and email show where to deliver, and the buyer gets a device-independent tracking link to confirm delivery from anywhere.
+- **Money-path guards:** per-IP rate limits on chat/setup/pay, payment status-gate + in-flight lock (no double-pay), daily settlement/payout caps, and on-chain amount reconciliation (the ledger credits what actually settled, never the chat figure).
 - **Conversations are durable** (Supabase), so refreshes and serverless cold starts never lose a negotiation.
 - **The worker** (`scripts/provider-worker.ts`) keeps provider agents online: reconnect with exponential backoff, heartbeat, health endpoint for uptime pingers.
 
@@ -119,8 +121,8 @@ Database schema: run `supabase/schema.sql` in the Supabase SQL editor.
 
 ## Honest limitations
 
-- **Buyer custody (demo):** payments execute from Deskon's requester agent, not the buyer's own wallet. Real-world v2 is buyer-side wallets (or CAP's buyer flow) — the negotiation and settlement rails don't change.
-- **Custodial escrow window:** after on-chain settlement, Deskon holds funds until the buyer confirms delivery (or 7-day auto-release), then pays out on-chain from a treasury wallet. Non-custodial per-seller agents are the roadmap.
+- **Buyer custody:** buyers pay from their own wallet — USDC to Deskon's deposit address on Base, verified on-chain (transfer logs, amount, anti-replay) before the deal settles. A sponsored path (Deskon's requester agent fronts the payment) is kept as a labeled demo fallback for judges without Base USDC and for the autonomous agent-buyer.
+- **Custodial escrow window:** after settlement, Deskon holds funds until the buyer confirms delivery (or 7-day auto-release), then pays out on-chain from a treasury wallet. The payout code is built and tested; when the treasury is unfunded, withdrawals record as requests instead. Non-custodial per-seller agents (each seller controlling their own CROO agent) are the roadmap — blocked today by the lack of programmatic agent registration on CROO.
 - **Email is sandboxed:** without a verified domain, Resend only delivers to the account owner. One DNS record fixes it.
 - **Fixed-price CROO services:** CAP prices are set per service definition; the closer negotiates scope within the seller's bounds and settles at the service price.
 - **Render free tier idles:** the worker needs an uptime pinger (any 10-min cron on `/`) or a paid background worker.
