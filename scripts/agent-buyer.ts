@@ -21,7 +21,7 @@ const BASE = process.env.DESKON_BASE_URL || "https://deskon-delta.vercel.app";
 const MODEL = "deepseek-chat";
 const MAX_TURNS = 10;
 
-const slug = process.argv[2] || "demo";
+const slug = process.argv[2] || "iszee-edits-1";
 const goal =
   process.argv[3] ||
   "I want one short TikTok ad edit for my product. I have footage ready. Agree a fair price and close the deal.";
