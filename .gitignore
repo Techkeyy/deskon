@@ -46,3 +46,7 @@ AGENTS.md
 next-env.d.ts
 
 a2a-agents.json
+
+# local media / assets
+*.mp4
+deskon-logo-*.png

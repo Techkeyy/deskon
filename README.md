@@ -4,7 +4,7 @@
 
 Deskon gives any seller an AI deal-closer behind a shareable link. A buyer — human *or* agent — opens the link, gets qualified, scoped, and negotiated by the closer, and settles payment in USDC escrow on Base mainnet through the [CROO Agent Protocol](https://croo.network) (CAP). No forms, no invoices, no chasing.
 
-**Live:** https://deskon-delta.vercel.app · Built for the CROO Agent Hackathon 2026.
+**Live:** https://deskon-delta.vercel.app · **CROO Agent Store:** [Deskon Relay](https://agent.croo.network/agents/517d961f-81b9-4735-b843-65f4515937a6) · Built for the CROO Agent Hackathon 2026 · MIT licensed.
 
 ---
 
@@ -42,10 +42,10 @@ Every settlement below is a real Base-mainnet transaction. Highlights:
 | Human-flow settlement (order `26489c6e`) | $200.00 | [`0x7a7d5175…`](https://basescan.org/tx/0x7a7d5175390d0600f5579862f1bf70afb9aed0495b29ffdbcb99c40e74ac409a) |
 | **Fully autonomous A2A settlement** — two AIs, no humans (order `c10c1f53`) | $0.50 | [`0xf936c588…`](https://basescan.org/tx/0xf936c58877e34a533410fdd47e1294624bdcacc88b0ae8123936e529bdbd6ce3) |
 
-The trade graph spans **6 distinct paying wallets and 8 distinct counterparty agents** across 13 settlements:
+The trade graph spans **6 distinct paying wallets and 8 distinct counterparty agents** across 18 settlements:
 
 <details>
-<summary>All 13 settlement transactions</summary>
+<summary>All 18 settlement transactions</summary>
 
 Funding round (relay agent buying from 5 distinct provider agents):
 
@@ -63,6 +63,14 @@ Campaign matrix (4 distinct buyer agents × 3 distinct provider agents):
 - [`0xd8b37e5c…`](https://basescan.org/tx/0xd8b37e5c0147d35d1cede91ad08d7d54a80d140fd5e934098d8d9f7b8b95c603)
 - [`0x461d0f82…`](https://basescan.org/tx/0x461d0f82ea942f414d0c5e51c5f9b0f029e3c86cb0fdf547bf9025be06169c87)
 - [`0x21e73598…`](https://basescan.org/tx/0x21e7359894454b0c8b8c0bf2f9f144e245cb1f1f80c270d49345304000136a4d)
+
+Consolidation + live spot-check settlements:
+
+- [`0x4a2b206a…`](https://basescan.org/tx/0x4a2b206a73f69bd37dfd0293626a8f02c8bf08d411bc4a1ccf021ee595b03956)
+- [`0x0afb923f…`](https://basescan.org/tx/0x0afb923f663a65d78ba3aef806bf3dd83c04544bb74ad0ca2d7ba8ffb026d81f)
+- [`0x1c2a59e7…`](https://basescan.org/tx/0x1c2a59e790ec8d2abf73c6d244977fd9225cdb04a56e57e4510520ab3a4d7a5a)
+- [`0x00773100…`](https://basescan.org/tx/0x00773100e8a4b24a7af7f9788b594da58eab5b3013c0078c6a75ce964fc74966)
+- [`0x69073f49…`](https://basescan.org/tx/0x69073f49a4a485fe8ede9cf9c1898f98f2f014a856d3896470f4702a26dd3e11)
 
 Plus the two highlighted above.
 </details>
@@ -93,6 +101,28 @@ CROO Agent Protocol — Base mainnet
 ## Stack
 
 Next.js 16 · React 19 · Supabase · DeepSeek (`deepseek-chat`) · `@croo-network/sdk` · viem · Resend · Vercel (app) + Render (worker)
+
+## CAP integration — SDK methods used
+
+From `@croo-network/sdk` (`AgentClient`):
+
+| Method | Where / why |
+|---|---|
+| `connectWebSocket` + `EventType.{NegotiationCreated, OrderPaid, OrderCompleted}` | `scripts/provider-worker.ts` — keeps provider agents online; auto-accept + deliver |
+| `negotiateOrder` | `src/lib/payment.ts`, `scripts/agent-buyer.ts` — open a deal against a service |
+| `acceptNegotiation` | worker — accepting creates the on-chain order |
+| `getNegotiation` / `listOrders` / `getOrder` | polling the negotiation to the created order |
+| `payOrder` | settle USDC into escrow on Base (SDK handles approve) |
+| `deliverOrder` | worker — deliver on `OrderPaid`, escrow clears |
+| `isInsufficientBalance` | graceful funding errors on the pay path |
+
+**Integration notes**
+
+- Base mainnet (8453) only; USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`; gas sponsored by CROO's paymaster — buyers only need USDC.
+- CROO reports order price/amount in 6-decimal USDC base units (`"100000"` = $0.10) — parse accordingly.
+- One WebSocket per API key; avoid concurrent `payOrder` calls on the same key.
+- CROO services are fixed-price: the closer negotiates *scope* within the seller's bounds and settles at the service price; the ledger credits what actually settled on-chain.
+- Free-tier hosts can freeze the worker and silently kill the CAP socket while HTTP still answers (`PROVIDER_NOT_ACCEPTING_ORDERS`) — the worker refreshes its connection every 15 minutes and needs an uptime pinger (HEAD requests, so host wake-pages can't break the cron).
 
 ## Run it locally
 
